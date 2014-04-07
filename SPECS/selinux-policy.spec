@@ -19,7 +19,7 @@
 Summary: SELinux policy configuration
 Name: selinux-policy
 Version: 3.12.1
-Release: 103%{?dist}
+Release: 153%{?dist}
 License: GPLv2+
 Group: System Environment/Base
 Source: serefpolicy-%{version}.tgz
@@ -117,6 +117,7 @@ SELinux policy development and man page package
 %{_usr}/share/selinux/devel/include/*
 %dir %{_usr}/share/selinux/devel/html
 %{_usr}/share/selinux/devel/html/*html
+%{_usr}/share/selinux/devel/html/*css
 %{_usr}/share/selinux/devel/Makefile
 %{_usr}/share/selinux/devel/example.*
 %{_usr}/share/selinux/devel/policy.*
@@ -251,7 +252,7 @@ ln -sf /etc/selinux/%1/policy/policy.%{POLICYVER}  %{buildroot}%{_sysconfdir}/se
 %config(noreplace) %{_sysconfdir}/selinux/%1/contexts/users/guest_u \
 %config(noreplace) %{_sysconfdir}/selinux/%1/contexts/users/xguest_u \
 %config(noreplace) %{_sysconfdir}/selinux/%1/contexts/users/user_u \
-%config(noreplace) %{_sysconfdir}/selinux/%1/contexts/users/staff_u 
+%config(noreplace) %{_sysconfdir}/selinux/%1/contexts/users/staff_u
 
 %define relabel() \
 . %{_sysconfdir}/selinux/config; \
@@ -288,7 +289,7 @@ fi;
 
 %define postInstall() \
 . %{_sysconfdir}/selinux/config; \
-(cd /etc/selinux/%2/modules/active/modules; rm -f l2tpd.pp shutdown.pp amavis.pp clamav.pp gnomeclock.pp matahari.pp xfs.pp kudzu.pp kerneloops.pp execmem.pp openoffice.pp ada.pp tzdata.pp hal.pp hotplug.pp howl.pp java.pp mono.pp moilscanner.pp gamin.pp audio_entropy.pp audioentropy.pp iscsid.pp polkit_auth.pp polkit.pp rtkit_daemon.pp ModemManager.pp telepathysofiasip.pp ethereal.pp passanger.pp qpidd.pp pyzor.pp razor.pp pki-selinux.pp phpfpm.pp consoletype.pp ctdbd.pp fcoemon.pp isnsd.pp rgmanager.pp corosync.pp aisexec.pp pacemaker.pp ) \
+(cd /etc/selinux/%2/modules/active/modules; rm -f nsplugin.pp l2tpd.pp shutdown.pp amavis.pp clamav.pp gnomeclock.pp matahari.pp xfs.pp kudzu.pp kerneloops.pp execmem.pp openoffice.pp ada.pp tzdata.pp hal.pp hotplug.pp howl.pp java.pp mono.pp moilscanner.pp gamin.pp audio_entropy.pp audioentropy.pp iscsid.pp polkit_auth.pp polkit.pp rtkit_daemon.pp ModemManager.pp telepathysofiasip.pp ethereal.pp passanger.pp qpidd.pp pyzor.pp razor.pp pki-selinux.pp phpfpm.pp consoletype.pp ctdbd.pp fcoemon.pp isnsd.pp rgmanager.pp corosync.pp aisexec.pp pacemaker.pp smstools.pp qemu.pp ) \
 if [ -e /etc/selinux/%2/.rebuild ]; then \
    rm /etc/selinux/%2/.rebuild; \
    /usr/sbin/semodule -B -n -s %2; \
@@ -388,6 +389,8 @@ chmod +x %{buildroot}%{_usr}/share/selinux/devel/policyhelp
 mkdir %{buildroot}%{_usr}/share/selinux/devel/html
 htmldir=`compgen -d %{buildroot}%{_usr}/share/man/man8/`
 mv ${htmldir}/* %{buildroot}%{_usr}/share/selinux/devel/html
+mv %{buildroot}%{_usr}/share/man/man8/index.html %{buildroot}%{_usr}/share/selinux/devel/html
+mv %{buildroot}%{_usr}/share/man/man8/style.css %{buildroot}%{_usr}/share/selinux/devel/html
 rm -rf ${htmldir}
 
 mkdir -p %{buildroot}%{_rpmconfigdir}/macros.d
@@ -453,7 +456,7 @@ Obsoletes: mod_fcgid-selinux <= %{version}-%{release}
 Obsoletes: cachefilesd-selinux <= 0.10-1
 Conflicts:  seedit
 Conflicts:  389-ds-base < 1.2.7, 389-admin < 1.1.12
-Conflicts:	pki-selinux < 10-0.0-0.45.b1
+Conflicts:	pki-selinux < 10.0.0-0.45.b1
 Conflicts:  freeipa-server-selinux < 3.2.2-1
 
 %description targeted
@@ -481,6 +484,7 @@ exit 0
 %files targeted
 %defattr(-,root,root,-)
 %config(noreplace) %{_sysconfdir}/selinux/targeted/contexts/users/unconfined_u
+%config(noreplace) %{_sysconfdir}/selinux/targeted/contexts/users/sysadm_u 
 %fileList targeted
 %{_usr}/share/selinux/targeted/modules-base.lst
 %{_usr}/share/selinux/targeted/modules-contrib.lst
@@ -516,7 +520,7 @@ done
 for p in $basepackages apache.pp dbus.pp inetd.pp kerberos.pp mta.pp nis.pp; do
 	rm -f /etc/selinux/minimum/modules/active/modules/$p.disabled
 done
-/usr/sbin/semanage -S minimum -i - << __eof
+/usr/sbin/semanage import -S minimum -f - << __eof
 login -m  -s unconfined_u -r s0-s0:c0.c1023 __default__
 login -m  -s unconfined_u -r s0-s0:c0.c1023 root
 __eof
@@ -538,6 +542,7 @@ exit 0
 %files minimum
 %defattr(-,root,root,-)
 %config(noreplace) %{_sysconfdir}/selinux/minimum/contexts/users/unconfined_u
+%config(noreplace) %{_sysconfdir}/selinux/minimum/contexts/users/sysadm_u
 %fileList minimum
 %{_usr}/share/selinux/minimum/modules-base.lst
 %{_usr}/share/selinux/minimum/modules-contrib.lst
@@ -574,9 +579,792 @@ SELinux Reference policy mls base module.
 %endif
 
 %changelog
+* Mon Apr 7 2014 Miroslav Grepl <mgrepl@redhat.com> 3.12.1-153
+- Change hsperfdata_root to have as user_tmp_t
+Resolves:#1076523
+
+* Fri Apr 4 2014 Miroslav Grepl <mgrepl@redhat.com> 3.12.1-152
+- Fix Multiple same specifications for /var/named/chroot/dev/zero
+- Add labels for /var/named/chroot_sdb/dev devices
+- Add support for strongimcv
+- Use kerberos_keytab_domains in auth_use_nsswitch
+- Update auth_use_nsswitch to make all these types as kerberos_keytab_domain to
+- Allow net_raw cap for neutron_t and send sigkill to dnsmasq
+- Fix ntp_filetrans_named_content for sntp-kod file
+- Add httpd_dbus_sssd boolean
+- Dontaudit exec insmod in boinc policy
+- Rename kerberos_keytab_domain to kerberos_keytab_domains
+- Add kerberos_keytab_domain()
+- Fix kerberos_keytab_template()
+- Make all domains which use kerberos as kerberos_keytab_domain
+Resolves:#1083670
+- Allow kill capability to winbind_t
+
+* Wed Apr 2 2014 Miroslav Grepl <mgrepl@redhat.com> 3.12.1-151
+- varnishd wants chown capability
+- update ntp_filetrans_named_content() interface
+- Add additional fixes for neutron_t. #1083335
+- Dontaudit getattr on proc_kcore_t
+- Allow pki_tomcat_t to read ipa lib files
+- Allow named_filetrans_domain to create /var/cache/ibus with correct labelign
+- Allow init_t run /sbin/augenrules
+- Add dev_unmount_sysfs_fs and sysnet_manage_ifconfig_run interfaces
+- Allow unpriv SELinux user to use sandbox
+- Add default label for /tmp/hsperfdata_root
+
+* Tue Apr 1 2014 Miroslav Grepl<mgrepl@redhat.com> 3.12.1-149
+- Add file subs also for /var/home
+
+* Mon Mar 31 2014 Miroslav Grepl<mgrepl@redhat.com> 3.12.1-149
+- Allow xauth_t to read user_home_dir_t lnk_file
+- Add labeling for lightdm-data
+- Allow certmonger to manage ipa lib files
+- Add support for /var/lib/ipa
+- Allow pegasus to getattr virt_content
+- Added some new rules to pcp policy
+- Allow chrome_sandbox to execute config_home_t
+- Add support for ABRT FAF
+
+* Fri Mar 28 2014 Miroslav Grepl<mgrepl@redhat.com> 3.12.1-148
+- Allow kdm to send signull to remote_login_t process
+- Add gear policy
+- Turn on gear_port_t
+- Allow cgit to read gitosis lib files by default
+- Allow vdagent to read xdm state
+- Allow NM and fcoeadm to talk together over unix_dgram_socket
+
+* Thu Mar 27 2014 Miroslav Grepl<mgrepl@redhat.com> 3.12.1-147
+- Back port fixes for pegasus_openlmi_admin_t from rawhide
+Resolves:#1080973
+- Add labels for ostree
+- Add SELinux awareness for NM
+- Label /usr/sbin/pwhistory_helper as updpwd_exec_t
+
+* Wed Mar 26 2014 Miroslav Grepl<mgrepl@redhat.com> 3.12.1-146
+- add gnome_append_home_config()
+- Allow thumb to append GNOME config home files
+- Allow rasdaemon to rw /dev/cpu//msr
+- fix /var/log/pki file spec
+- make bacula_t as auth_nsswitch domain
+- Identify pki_tomcat_cert_t as a cert_type
+- Define speech-dispater_exec_t as an application executable
+- Add a new file context for /var/named/chroot/run directory
+- update storage_filetrans_all_named_dev for sg* devices
+- Allow auditctl_t  to getattr on all removeable devices
+- Allow nsswitch_domains to stream connect to nmbd
+- Allow unprivusers to connect to memcached
+- label /var/lib/dirsrv/scripts-INSTANCE as bin_t
+
+* Mon Mar 24 2014 Miroslav Grepl<mgrepl@redhat.com> 3.12.1-145
+- Allow also unpriv user to run vmtools
+- Allow secadm to read /dev/urandom and meminfo
+Resolves:#1079250
+- Add booleans to allow docker processes to use nfs and samba
+- Add mdadm_tmpfs support
+- Dontaudit net_amdin for /usr/lib/jvm/java-1.7.0-openjdk-1.7.0.51-2.4.5.1.el7.x86_64/jre-abrt/bin/java running as pki_tomcat_t
+- Allow vmware-user-sui to use user ttys
+- Allow talk 2 users logged via console too
+- Allow ftp services to manage xferlog_t
+- Make all pcp domanis as unconfined for RHEL7.0 beucause of new policies
+- allow anaconda to dbus chat with systemd-localed
+
+* Fri Mar 21 2014 Miroslav Grepl<mgrepl@redhat.com> 3.12.1-144
+- allow anaconda to dbus chat with systemd-localed
+- Add fixes for haproxy based on bperkins@redhat.com
+- Allow cmirrord to make dmsetup working
+- Allow NM to execute arping
+- Allow users to send messages through talk
+- Add userdom_tmp_role for secadm_t
+
+* Thu Mar 20 2014 Lukas Vrabec <lvrabec@redhat.com> 3.12.1-143
+- Add additional fixes for rtas_errd
+- Fix transitions for tmp/tmpfs in rtas.te
+- Allow rtas_errd to readl all sysctls
+
+
+* Wed Mar 19 2014 Miroslav Grepl<mgrepl@redhat.com> 3.12.1-142
+- Add support for /var/spool/rhsm/debug
+- Make virt_sandbox_use_audit as True by default
+- Allow svirt_sandbox_domains to ptrace themselves
+
+* Wed Mar 19 2014 Miroslav Grepl<mgrepl@redhat.com> 3.12.1-141
+- Allow docker containers to manage /var/lib/docker content
+
+* Mon Mar 17 2014 Miroslav Grepl<mgrepl@redhat.com> 3.12.1-140
+- Allow docker to read tmpfs_t symlinks
+- Allow sandbox svirt_lxc_net_t to talk to syslog and to sssd over stream sockets
+
+* Mon Mar 17 2014 Miroslav Grepl<mgrepl@redhat.com> 3.12.1-139
+- Allow collectd to talk to libvirt
+- Allow chrome_sandbox to use leaked unix_stream_sockets
+- Dontaudit leaks of sockets into chrome_sandbox_t
+- If you create a cups directory in /var/cache then it should be labeled cups_rw_etc_t
+- Run vmtools as unconfined domains
+- Allow snort to manage its log files
+- Allow systemd_cronjob_t to be entered via bin_t
+- Allow procman to list doveconf_etc_t
+- allow keyring daemon to create content in tmpfs directories
+- Add proper labelling for icedtea-web
+- vpnc is creating content in networkmanager var run directory
+- Label sddm as xdm_exec_t to make KDE working again
+- Allow postgresql to read network state
+- Allow java running as pki_tomcat to read network sysctls
+- Fix cgroup.te to allow cgred to read cgconfig_etc_t
+- Allow beam.smp to use ephemeral ports
+- Allow winbind to use the nis to authenticate passwords
+
+* Fri Mar 14 2014 Lukas Vrabec <lvrabec@redhat.com> 3.12.1-138
+- Make rtas_errd_t as unconfined domain for F20.It needs additional fixes. It runs rpm at least.
+- Allow net_admin cap for fence_virtd running as fenced_t
+- Make  abrt-java-connector working
+- Make cimtest script 03_defineVS.py of ComputerSystem group working
+- Fix git_system_enable_homedirs boolean
+- Allow munin mail plugins to read network systcl
+
+* Thu Mar 13 2014 Miroslav Grepl<mgrepl@redhat.com> 3.12.1-137
+- Allow vmtools_helper_t to execute bin_t
+- Add support for /usr/share/joomla
+- /var/lib/containers should be labeled as openshift content for now
+- Allow docker domains to talk to the login programs, to allow a process to login into the container
+- Allow install_t do dbus chat with NM
+- Fix interface names in anaconda.if
+- Add install_t for anaconda. A new type is a part of anaconda policy
+- sshd to read network sysctls
+
+* Wed Mar 12 2014 Miroslav Grepl<mgrepl@redhat.com> 3.12.1-136
+- Allow zabbix to send system log msgs
+- Allow init_t to stream connect to ipsec
+Resolves:#1060775
+
+* Tue Mar 11 2014 Miroslav Grepl<mgrepl@redhat.com> 3.12.1-135
+- Add docker_connect_any boolean
+
+* Tue Mar 11 2014 Miroslav Grepl<mgrepl@redhat.com> 3.12.1-134
+- Allow unpriv SELinux users to dbus chat with firewalld
+- Add lvm_write_metadata()
+- Label /etc/yum.reposd dir as system_conf_t. Should be safe because system_conf_t is base_ro_file_type
+- Allow pegasus_openlmi_storage_t to write lvm metadata
+- Add hide_broken_symptoms for kdumpgui because of systemd bug
+- Make kdumpgui_t as unconfined domain
+Resolves:#1044299
+- Allow docker to connect to tcp/5000
+
+* Mon Mar 10 2014 Miroslav Grepl<mgrepl@redhat.com> 3.12.1-133
+- Allow numad to write scan_sleep_millisecs
+- Turn on entropyd_use_audio boolean by default
+- Allow cgred to read /etc/cgconfig.conf because it contains templates used together with rules from /etc/cgrules.conf.
+- Allow lscpu running as rhsmcertd_t to read /proc/sysinfo
+- Fix label on irclogs in the homedir
+- Allow kerberos_keytab_domain domains to manage keys until we get sssd fix
+- Allow postgresql to use ldap
+- Add missing syslog-conn port
+- Add support for /dev/vmcp and /dev/sclp
+Resolves:#1069310
+
+* Fri Mar 7 2014 Miroslav Grepl<mgrepl@redhat.com> 3.12.1-132
+- Modify xdm_write_home to allow create files/links in /root with xdm_home_
+- Allow virt domains to read network state
+Resolves:#1072019
+
+* Thu Mar 6 2014 Miroslav Grepl<mgrepl@redhat.com> 3.12.1-131
+- Added pcp rules
+- dontaudit openshift_cron_t searching random directories, should be back ported to RHEL6
+- clean up ctdb.te
+- Allow ctdbd to connect own ports
+- Fix samba_export_all_rw booleanto cover also non security dirs
+- Allow swift to exec rpm in swift_t and allow to create tmp files/dirs
+- Allow neutron to create /run/netns with correct labeling
+- Allow certmonger to list home dirs
+
+* Wed Mar 5 2014 Miroslav Grepl<mgrepl@redhat.com> 3.12.1-130
+- Change userdom_use_user_inherited_ttys to userdom_use_user_ttys for systemd-tty-ask
+- Add sysnet_filetrans_named_content_ifconfig() interface
+- Allow ctdbd to connect own ports
+- Fix samba_export_all_rw booleanto cover also non security dirs
+- Allow swift to exec rpm in swift_t and allow to create tmp files/dirs
+- Allow neutron to create /run/netns with correct labeling
+- Allow kerberos keytab domains to manage sssd/userdomain keys"
+- Allow to run ip cmd in neutron_t domain
+
+* Mon Mar 3 2014 Miroslav Grepl<mgrepl@redhat.com> 3.12.1-129
+- Allow block_suspend cap2 for systemd-logind and rw dri device
+- Add labeling for /usr/libexec/nm-libreswan-service
+- Allow locallogin to rw xdm key to make Virtual Terminal login providing smartcard pin working
+- Add xserver_rw_xdm_keys()
+- Allow rpm_script_t to dbus chat also with systemd-located
+- Fix ipa_stream_connect_otpd()
+- update lpd_manage_spool() interface
+- Allow krb5kdc to stream connect to ipa-otpd
+- Add ipa_stream_connect_otpd() interface
+- Allow vpnc to unlink NM pids
+- Add networkmanager_delete_pid_files()
+- Allow munin plugins to access unconfined plugins
+- update abrt_filetrans_named_content to cover /var/spool/debug
+- Label /var/spool/debug as abrt_var_cache_t
+- Allow rhsmcertd to connect to squid port
+- Make docker_transition_unconfined as optional boolean
+- Allow certmonger to list home dirs
+
+* Wed Feb 26 2014 Miroslav Grepl<mgrepl@redhat.com> 3.12.1-128
+- Make snapperd as unconfined domain and add additional fixes for it
+- Remove nsplugin.pp module on upgrade
+
+* Tue Feb 25 2014 Miroslav Grepl<mgrepl@redhat.com> 3.12.1-127
+- Add snapperd_home_t for HOME_DIR/.snapshots directory
+- Make sosreport as unconfined domain
+- Allow sosreport to execute grub2-probe
+- Allow NM to manage hostname config file
+- Allow systemd_timedated_t to dbus chat with rpm_script_t
+- Allow lsmd plugins to connect to http/ssh/http_cache ports by default
+- Add lsmd_plugin_connect_any boolean
+- Allow mozilla_plugin to attempt to set capabilities
+- Allow lsdm_plugins to use tcp_socket
+- Dontaudit mozilla plugin from getattr on /proc or /sys
+- Dontaudit use of the keyring by the services in a sandbox
+- Dontaudit attempts to sys_ptrace caused by running ps for mysqld_safe_t
+- Allow rabbitmq_beam to connect to jabber_interserver_port
+- Allow logwatch_mail_t to transition to qmail_inject and queueu
+- Added new rules to pcp policy
+- Allow vmtools_helper_t to change role to system_r
+- Allow NM to dbus chat with vmtools
+- Fix couchdb_manage_files() to allow manage couchdb conf files
+- Add support for /var/run/redis.sock
+- dontaudit gpg trying to use audit
+- Allow consolekit to create log directories and files
+- Fix vmtools policy to allow user roles to access vmtools_helper_t
+- Allow block_suspend cap2 for ipa-otpd
+- Allow pkcsslotd to read users state
+- Add ioctl to init_dontaudit_rw_stream_socket
+- Add systemd_hostnamed_manage_config() interface
+- Remove transition for temp dirs created by init_t
+- gdm-simple-slave uses use setsockopt
+- sddm-greater is a xdm type program
+
+* Tue Feb 18 2014 Miroslav Grepl<mgrepl@redhat.com> 3.12.1-126
+- Add lvm_read_metadata()
+- Allow auditadm to search /var/log/audit dir
+- Add lvm_read_metadata() interface
+- Allow confined users to run vmtools helpers
+- Fix userdom_common_user_template()
+- Generic systemd unit scripts do write check on /
+- Allow init_t to create init_tmp_t in /tmp.This is for temporary content created by generic unit files
+- Add additional fixes needed for init_t and setup script running in generic unit files
+- Allow general users to create packet_sockets
+- added connlcli port
+- Add init_manage_transient_unit() interface
+- Allow init_t (generic unit files) to manage rpc state date as we had it for initrc_t
+- Fix userdomain.te to require passwd class
+- devicekit_power sends out a signal to all processes on the message bus when power is going down
+- Dontaudit rendom domains listing /proc and hittping system_map_t
+- Dontauit leaks of var_t into ifconfig_t
+- Allow domains that transition to ssh_t to manipulate its keyring
+- Define oracleasm_t as a device node
+- Change to handle /root as a symbolic link for os-tree
+- Allow sysadm_t to create packet_socket, also move some rules to attributes
+- Add label for openvswitch port
+- Remove general transition for files/dirs created in /etc/mail which got etc_aliases_t label.
+- Allow postfix_local to read .forward in pcp lib files
+- Allow pegasus_openlmi_storage_t to read lvm metadata
+- Add additional fixes for pegasus_openlmi_storage_t
+- Allow bumblebee to manage debugfs
+- Make bumblebee as unconfined domain
+- Allow snmp to read etc_aliases_t
+- Allow lscpu running in pegasus_openlmi_storage_t to read /dev/mem
+- Allow pegasus_openlmi_storage_t to read /proc/1/environ
+- Dontaudit read gconf files for cupsd_config_t
+- make vmtools as unconfined domain
+- Add vmtools_helper_t for helper scripts. Allow vmtools shutdonw a host and run ifconfig.
+- Allow collectd_t to use a mysql database
+- Allow ipa-otpd to perform DNS name resolution
+- Added new policy for keepalived
+- Allow openlmi-service provider to manage transitient units and allow stream connect to sssd
+- Add additional fixes new pscs-lite+polkit support
+- Add labeling for /run/krb5kdc
+- Change w3c_validator_tmp_t to httpd_w3c_validator_tmp_t in F20
+- Allow pcscd to read users proc info
+- Dontaudit smbd_t sending out random signuls
+- Add boolean to allow openshift domains to use nfs
+- Allow w3c_validator to create content in /tmp
+- zabbix_agent uses nsswitch
+- Allow procmail and dovecot to work together to deliver mail
+- Allow spamd to execute files in homedir if boolean turned on
+- Allow openvswitch to listen on port 6634
+- Add net_admin capability in collectd policy
+- Fixed snapperd policy
+- Fixed bugsfor pcp policy
+- Allow dbus_system_domains to be started by init
+- Fixed some interfaces
+- Add kerberos_keytab_domain attribute
+- Fix snapperd_conf_t def
+
+* Tue Feb 11 2014 Miroslav Grepl<mgrepl@redhat.com> 3.12.1-125
+- Addopt corenet rules for unbound-anchor to rpm_script_t
+- Allow runuser to send send audit messages.
+- Allow postfix-local to search .forward in munin lib dirs
+- Allow udisks to connect to D-Bus
+- Allow spamd to connect to spamd port
+- Fix syntax error in snapper.te
+- Dontaudit osad to search gconf home files
+- Allow rhsmcertd to manage /etc/sysconf/rhn director
+- Fix pcp labeling to accept /usr/bin for all daemon binaries
+- Fix mcelog_read_log() interface
+- Allow iscsid to manage iscsi lib files
+- Allow snapper domtrans to lvm_t. Add support for /etc/snapper and allow snapperd to manage it.
+- Make tuned_t as unconfined domain for RHEL7.0
+- Allow ABRT to read puppet certs
+- Add sys_time capability for virt-ga
+- Allow gemu-ga to domtrans to hwclock_t
+- Allow additional access for virt_qemu_ga_t processes to read system clock and send audit messages
+- Fix some AVCs in pcp policy
+- Add to bacula capability setgid and setuid and allow to bind to bacula ports
+- Changed label from rhnsd_rw_conf_t to rhnsd_conf_t
+- Add access rhnsd and osad to /etc/sysconfig/rhn
+- drbdadm executes drbdmeta
+- Fixes needed for docker
+- Allow epmd to manage /var/log/rabbitmq/startup_err file
+- Allow beam.smp connect to amqp port
+- Modify xdm_write_home to allow create also links as xdm_home_t if the boolean is on true
+- Allow init_t to manage pluto.ctl because of init_t instead of initrc_t
+- Allow systemd_tmpfiles_t to manage all non security files on the system
+- Added labels for bacula ports
+- Fix label on /dev/vfio/vfio
+- Add kernel_mounton_messages() interface
+- init wants to manage lock files for iscsi
+
+* Mon Feb 3 2014 Miroslav Grepl<mgrepl@redhat.com> 3.12.1-124
+- Added osad policy
+- Allow postfix to deliver to procmail
+- Allow bumblebee to seng kill signal to xserver
+- Allow vmtools to execute /usr/bin/lsb_release
+- Allow docker to write system net ctrls
+- Add support for rhnsd unit file
+- Add dbus_chat_session_bus() interface
+- Add dbus_stream_connect_session_bus() interface
+- Fix pcp.te
+- Fix logrotate_use_nfs boolean
+- Add lot of pcp fixes found in RHEL7
+- fix labeling for pmie for pcp pkg
+- Change thumb_t to be allowed to chat/connect with session bus type
+- Allow call renice in mlocate
+- Add logrotate_use_nfs boolean
+- Allow setroubleshootd to read rpc sysctl
+
+* Fri Jan 31 2014 Miroslav Grepl<mgrepl@redhat.com> 3.12.1-123
+- Turn on bacula, rhnsd policy
+- Add support for rhnsd unit file
+- Add dbus_chat_session_bus() interface
+- Add dbus_stream_connect_session_bus() interface
+- Fix logrotate_use_nfs boolean
+- Add lot of pcp fixes found in RHEL7
+- fix labeling for pmie for pcp pkg
+- Change thumb_t to be allowed to chat/connect with session bus type
+- Allow call renice in mlocate
+- Add logrotate_use_nfs boolean
+- Allow setroubleshootd to read rpc sysctl
+- Fixes for *_admin interfaces
+- Add pegasus_openlmi_storage_var_run_t type def
+- Add support for /var/run/openlmi-storage
+- Allow tuned to create syslog.conf with correct labeling
+- Add httpd_dontaudit_search_dirs boolean
+- Add support for winbind.service
+- ALlow also fail2ban-client to read apache logs
+- Allow vmtools to getattr on all fs
+- Add support for dey_sapi port
+- Add logging_filetrans_named_conf()
+- Allow passwd_t to use ipc_lock, so that it can change the password in gnome-keyring
+
+* Tue Jan 28 2014 Miroslav Grepl<mgrepl@redhat.com> 3.12.1-122
+- Update snapper policy
+- Allow domains to append rkhunter lib files
+- Allow snapperd to getattr on all fs
+- Allow xdm to create /var/gdm with correct labeling
+- Add label for snapper.log
+- Allow fail2ban-client to read apache log files
+- Allow thumb_t to execute dbus-daemon in thumb_t
+
+* Mon Jan 27 2014 Miroslav Grepl<mgrepl@redhat.com> 3.12.1-121
+- Allow gdm to create /var/gdm with correct labeling
+- Allow domains to append rkhunterl lib files. #1057982
+- Allow systemd_tmpfiles_t net_admin to communicate with journald
+- Add interface to getattr on an isid_type for any type of file
+- Update libs_filetrans_named_content() to have support for /usr/lib/debug directory
+- Allow initrc_t domtrans to authconfig if unconfined is enabled
+- Allow docker and mount on devpts chr_file
+- Allow docker to transition to unconfined_t if boolean set
+- init calling needs to be optional in domain.te
+- Allow uncofined domain types to handle transient unit files
+- Fix labeling for vfio devices
+- Allow net_admin capability and send system log msgs
+- Allow lldpad send dgram to NM
+- Add networkmanager_dgram_send()
+- rkhunter_var_lib_t is correct type
+- Back port pcp policy from rawhide
+- Allow openlmi-storage to read removable devices
+- Allow system cron jobs to manage rkhunter lib files
+- Add rkhunter_manage_lib_files()
+- Fix ftpd_use_fusefs boolean to allow manage also symlinks
+- Allow smbcontrob block_suspend cap2
+- Allow slpd to read network and system state info
+- Allow NM domtrans to iscsid_t if iscsiadm is executed
+- Allow slapd to send a signal itself
+- Allow sslget running as pki_ra_t to contact port 8443, the secure port of the CA.
+- Fix plymouthd_create_log() interface
+- Add rkhunter policy with files type definition for /var/lib/rkhunter until it is fixed in rkhunter package
+- Add mozilla_plugin_exec_t for /usr/lib/firefox/plugin-container
+- Allow postfix and cyrus-imapd to work out of box
+- Allow fcoemon to talk with unpriv user domain using unix_stream_socket
+- Dontaudit domains that are calling into journald to net_admin
+- Add rules to allow vmtools to do what it does
+- snapperd is D-Bus service
+- Allow OpenLMI PowerManagement to call 'systemctl --force reboot'
+- Add haproxy_connect_any boolean
+- Allow haproxy also to use http cache port by default
+Resolves:#1058248
+
+* Tue Jan 21 2014 Miroslav Grepl<mgrepl@redhat.com> 3.12.1-120
+- Allow apache to write to the owncloud data directory in /var/www/html...
+- Allow consolekit to create log dir
+- Add support for icinga CGI scripts
+- Add support for icinga
+- Allow kdumpctl_t to create kdump lock file
+Resolves:#1055634
+- Allow kdump to create lnk lock file
+- Allow nscd_t block_suspen capability
+- Allow unconfined domain types to manage own transient unit file
+- Allow systemd domains to handle transient init unit files
+- Add interfaces to handle transient
+
+* Mon Jan 20 2014 Miroslav Grepl<mgrepl@redhat.com> 3.12.1-119
+- Add cron unconfined role support for uncofined SELinux user
+- Call corenet_udp_bind_all_ports() in milter.te
+- Allow fence_virtd to connect to zented port
+- Fix header for mirrormanager_admin()
+- Allow dkim-milter to bind udp ports
+- Allow milter domains to send signull itself
+- Allow block_suspend for yum running as mock_t
+- Allow beam.smp to manage couchdb files
+- Add couchdb_manage_files()
+- Add labeling for /var/log/php_errors.log
+- Allow bumblebee to stream connect to xserver
+- Allow bumblebee to send a signal to xserver
+- gnome-thumbnail to stream connect to bumblebee
+- Allow xkbcomp running as bumblebee_t to execute  bin_t
+- Allow logrotate to read squid.conf
+- Additional rules to get docker and lxc to play well with SELinux
+- Allow bumbleed to connect to xserver port
+- Allow pegasus_openlmi_storage_t to read hwdata
+
+* Thu Jan 16 2014 Miroslav Grepl <mgrepl@redhat.com> 3.12.1-118
+- Allow init_t to work on transitient and snapshot unit files
+- Add logging_manage_syslog_config()
+- Update sysnet_dns_name_resolve() to allow connect to dnssec por
+- Allow pegasus_openlmi_storage_t to read hwdata
+Resolves:#1031721
+- Fix rhcs_rw_cluster_tmpfs()
+- Allow fenced_t to bind on zented udp port
+- Added policy for vmtools
+- Fix mirrormanager_read_lib_files()
+- Allow mirromanager scripts running as httpd_t to manage mirrormanager pid files
+- Allow ctdb to create sock files in /var/run/ctdb
+- Add sblim_filetrans_named_content() interface
+- Allow rpm scritplets to create /run/gather with correct labeling
+- Allow gnome keyring domains to create gnome config dirs
+- Dontaudit read/write to init stream socket for lsmd_plugin_t
+- Allow automount to read nfs link files
+- Allow lsm plugins to read/write lsmd stream socket
+- Allow certmonger to connect ldap port to make IPA CA certificate renewal working.
+- Add also labeling for /var/run/ctdb
+- Add missing labeling for /var/lib/ctdb
+- ALlow tuned to manage syslog.conf. Should be fixed in tuned. #1030446
+- Dontaudit hypervkvp to search homedirs
+- Dontaudit hypervkvp to search admin homedirs
+- Allow hypervkvp to execute bin_t and ifconfig in the caller domain
+- Dontaudit xguest_t to read ABRT conf files
+- Add abrt_dontaudit_read_config()
+- Allow namespace-init to getattr on fs
+- Add thumb_role() also for xguest
+- Add filename transitions to create .spamassassin with correct labeling
+- Allow apache domain to read mirrormanager pid files
+- Allow domains to read/write shm and sem owned by mozilla_plugin_t
+- Allow alsactl to send a generic signal to kernel_t
+
+* Tue Jan 14 2014 Miroslav Grepl <mgrepl@redhat.com> 3.12.1-117
+- Add back rpm_run() for unconfined user
+
+* Tue Jan 14 2014 Miroslav Grepl <mgrepl@redhat.com> 3.12.1-116
+- Add missing files_create_var_lib_dirs()
+- Fix typo in ipsec.te
+- Allow passwd to create directory in /var/lib
+- Add filename trans also for event21
+- Allow iptables command to read /dev/rand
+- Add sigkill capabilityfor ipsec_t
+- Add filename transitions for bcache devices
+- Add additional rules to create /var/log/cron by syslogd_t with correct labeling
+- Add give everyone full access to all key rings
+- Add default lvm_var_run_t label for /var/run/multipathd
+- Fix log labeling to have correct default label for them after logrotate
+- Labeled ~/.nv/GLCache as being gstreamer output
+- Allow nagios_system_plugin to read mrtg lib files
+- Add mrtg_read_lib_files()
+- Call rhcs_rw_cluster_tmpfs for dlm_controld
+- Make authconfing as named_filetrans domain
+- Allow virsh to connect to user process using stream socket
+- Allow rtas_errd to read rand/urand devices and add chown capability
+- Fix labeling from /var/run/net-snmpd to correct /var/run/net-snmp
+Resolves:#1051497
+- Add also chown cap for abrt_upload_watch_t. It already has dac_override
+- Allow sosreport to manage rhsmcertd pid files
+- Add rhsmcertd_manage_pid_files()
+- Allow also setgid cap for rpc.gssd
+- Dontaudit access check for abrt on cert_t
+- Allow pegasus_openlmi_system providers to dbus chat with systemd-logind
+
+* Fri Jan 10 2014 Miroslav Grepl <mgrepl@redhat.com> 3.12.1-115
+- Fix semanage import handling in spec file
+
+* Fri Jan 10 2014 Miroslav Grepl <mgrepl@redhat.com> 3.12.1-114
+- Add default lvm_var_run_t label for /var/run/multipathd
+Resolves:#1051430
+- Fix log labeling to have correct default label for them after logrotate
+- Add files_write_root_dirs
+- Add new openflow port label for 6653/tcp and 6633/tcp
+- Add xserver_manage_xkb_libs()
+- Label tcp/8891 as milter por
+- Allow gnome_manage_generic_cache_files also create cache_home_t files
+- Fix aide.log labeling
+- Fix log labeling to have correct default label for them after logrotate
+- Allow mysqld-safe write access on /root to make mysqld working
+- Allow sosreport domtrans to prelikn
+- Allow OpenvSwitch to connec to openflow ports
+- Allow NM send dgram to lldpad
+- Allow hyperv domains to execute shell
+- Allow lsmd plugins stream connect to lsmd/init
+- Allow sblim domains to create /run/gather with correct labeling
+- Allow httpd to read ldap certs
+- Allow cupsd to send dbus msgs to process with different MLS level
+- Allow bumblebee to stream connect to apmd
+- Allow bumblebee to run xkbcomp
+- Additional allow rules to get libvirt-lxc containers working with docker
+- Additional allow rules to get libvirt-lxc containers working with docker
+- Allow docker to getattr on itself
+- Additional rules needed for sandbox apps
+- Allow mozilla_plugin to set attributes on usb device if use_spice boolean enabled
+- httpd should be able to send signal/signull to httpd_suexec_t
+- Add more fixes for neturon. Domtrans to dnsmasq, iptables. Make neutron as filenamtrans domain. 
+
+* Wed Jan 8 2014 Miroslav Grepl <mgrepl@redhat.com> 3.12.1-113
+- Add neutron fixes
+
+* Mon Jan 6 2014 Miroslav Grepl <mgrepl@redhat.com> 3.12.1-112
+- Allow sshd to write to all process levels in order to change passwd when running at a level
+- Allow updpwd_t to downgrade /etc/passwd file to s0, if it is not running with this range
+- Allow apcuspd_t to status and start the power unit file
+- Allow udev to manage kdump unit file
+- Added new interface modutils_dontaudit_exec_insmod
+- Allow cobbler to search dhcp_etc_t directory
+- systemd_systemctl needs sys_admin capability
+- Allow sytemd_tmpfiles_t to delete all directories
+- passwd to create gnome-keyring passwd socket
+- Add missing zabbix_var_lib_t type
+- Fix filename trans for zabbixsrv in zabbix.te
+- Allow fprintd_t to send syslog messages
+- Add  zabbix_var_lib_t for /var/lib/zabbixsrv, also allow zabix to connect to smtp port
+- Allow mozilla plugin to chat with policykit, needed for spice
+- Allow gssprozy to change user and gid, as well as read user keyrings
+- Label upgrades directory under /var/www as httpd_sys_rw_content_t, add other filetrans rules to label content correctly
+- Allow polipo to connect to http_cache_ports
+- Allow cron jobs to manage apache var lib content
+- Allow yppassword to manage the passwd_file_t
+- Allow showall_t to send itself signals
+- Allow cobbler to restart dhcpc, dnsmasq and bind services
+- Allow certmonger to manage home cert files
+- Add userdom filename trans for user mail domains
+- Allow apcuspd_t to status and start the power unit file
+- Allow cgroupdrulesengd to create content in cgoups directories
+- Allow smbd_t to signull cluster
+- Allow gluster daemon to create fifo files in glusterd_brick_t and sock_file in glusterd_var_lib_t
+- Add label for /var/spool/cron.aquota.user
+- Allow sandbox_x domains to use work with the mozilla plugin semaphore
+- Added new policy for speech-dispatcher
+- Added dontaudit rule for insmod_exec_t  in rasdaemon policy
+- Updated rasdaemon policy
+- Allow system_mail_t to transition to postfix_postdrop_t
+- Clean up mirrormanager policy
+- Allow virt_domains to read cert files, needs backport to RHEL7
+- Allow sssd to read systemd_login_var_run_t
+- Allow irc_t to execute shell and bin-t files:
+- Add new access for mythtv
+- Allow rsync_t to manage all non auth files
+- allow modemmanger to read /dev/urand
+- Allow sandbox apps to attempt to set and get capabilties
+
+* Thu Dec 19 2013 Miroslav Grepl <mgrepl@redhat.com> 3.12.1-111
+- Add labeling for /var/lib/servicelog/servicelog.db-journal
+- Add support for freeipmi port
+- Add sysadm_u_default_contexts
+- Make new type to texlive files in homedir
+- Allow subscription-manager running as sosreport_t to manage rhsmcertd
+- Additional fixes for docker.te
+- Remove ability to do mount/sys_admin by default in virt_sandbox domains
+- New rules required to run docker images within libivrt
+- Add label for ~/.cvsignore
+- Change mirrormanager to be run by cron
+- Add mirrormanager policy
+- Fixed bumblebee_admin() and mip6d_admin()
+- Add log support for sensord
+- Fix typo in docker.te
+- Allow amanda to do backups over UDP
+- Allow bumblebee to read /etc/group and clean up bumblebee.te
+- type transitions with a filename not allowed inside conditionals
+- Don't allow virt-sandbox tools to use netlink out of the box, needs back port to RHEL7
+- Make new type to texlive files in homedir
+
+* Thu Dec 12 2013 Miroslav Grepl <mgrepl@redhat.com> 3.12.1-110
+- Allow freeipmi_ipmidetectd_t to use freeipmi port
+- Update freeipmi_domain_template()
+- Allow journalctl running as ABRT to read /run/log/journal
+- Allow NM to read dispatcher.d directory
+- Update freeipmi policy
+- Type transitions with a filename not allowed inside conditionals
+- Allow tor to bind to hplip port
+- Make new type to texlive files in homedir
+- Allow zabbix_agent to transition to dmidecode
+- Add rules for docker
+- Allow sosreport to send signull to unconfined_t
+- Add virt_noatsecure and virt_rlimitinh interfaces
+- Fix labeling in thumb.fc to add support for /usr/lib64/tumbler-1/tumblerddd support for freeipmi port
+- Add sysadm_u_default_contexts
+- Add logging_read_syslog_pid()
+- Fix userdom_manage_home_texlive() interface
+- Make new type to texlive files in homedir
+- Add filename transitions for /run and /lock links
+- Allow virtd to inherit rlimit information
+Resolves:#975358
+
+* Tue Dec 10 2013 Miroslav Grepl <mgrepl@redhat.com> 3.12.1-109
+- Change labeling for /usr/libexec/nm-dispatcher.action to NetworkManager_exec_t
+Resolves:#1039879
+- Add labeling for /usr/lib/systemd/system/mariadb.service
+- Allow hyperv_domain to read sysfs
+- Fix ldap_read_certs() interface to allow acess also link files
+- Add support for /usr/libexec/pegasus/cmpiLMI_Journald-cimprovagt
+- Allow tuned to run modprobe
+- Allow portreserve to search /var/lib/sss dir
+- Add SELinux support for the teamd package contains team network device control daemon.
+- Dontaudit access check on /proc for bumblebee
+- Bumblebee wants to load nvidia modules
+- Fix rpm_named_filetrans_log_files and wine.te
+- Add conman policy for rawhide
+- DRM master and input event devices are used by  the TakeDevice API
+- Clean up bumblebee policy
+- Update pegasus_openlmi_storage_t policy
+- Add freeipmi_stream_connect() interface
+- Allow logwatch read madm.conf to support RAID setup
+- Add raid_read_conf_files() interface
+- Allow up2date running as rpm_t create up2date log file with rpm_log_t labeling
+- add rpm_named_filetrans_log_files() interface
+- Allow dkim-milter to create files/dirs in /tmp
+- update freeipmi policy
+- Add policy for freeipmi services
+- Added rdisc_admin and rdisc_systemctl interfaces
+- opensm policy clean up
+- openwsman policy clean up
+- ninfod policy clean up
+- Added new policy for ninfod
+- Added new policy for openwsman
+- Added rdisc_admin and rdisc_systemctl interfaces
+- Fix kernel_dontaudit_access_check_proc()
+- Add support for /dev/uhid
+- Allow sulogin to get the attributes of initctl and sys_admin cap
+- Add kernel_dontaudit_access_check_proc()
+- Fix dev_rw_ipmi_dev()
+- Fix new interface in devices.if
+- DRM master and input event devices are used by  the TakeDevice API
+- add dev_rw_inherited_dri() and dev_rw_inherited_input_dev()
+- Added support for default conman port
+- Add interfaces for ipmi devices
+
+* Wed Dec 4 2013 Miroslav Grepl <mgrepl@redhat.com> 3.12.1-108
+- Allow sosreport to send a signal to ABRT
+- Add proper aliases for pegasus_openlmi_service_exec_t and pegasus_openlmi_service_t
+- Label /usr/sbin/htcacheclean as httpd_exec_t
+Resolves:#1037529
+- Added support for rdisc unit file
+- Add antivirus_db_t labeling for /var/lib/clamav-unofficial-sigs
+- Allow runuser running as logrotate connections to system DBUS
+- Label bcache devices as fixed_disk_device_t
+- Allow systemctl running in ipsec_mgmt_t to access /usr/lib/systemd/system/ipsec.service
+- Label /usr/lib/systemd/system/ipsec.service as ipsec_mgmt_unit_file_t
+
+* Mon Dec 2 2013 Miroslav Grepl <mgrepl@redhat.com> 3.12.1-107
+- Add back setpgid/setsched for sosreport_t
+
+* Mon Dec 2 2013 Dan Walsh <dwalsh@redhat.com> 3.12.1-106
+- Added fix for clout_init to transition to rpm_script_t (dwalsh@redhat.com)
+
+* Tue Nov 26 2013 Miroslav Grepl <mgrepl@redhat.com> 3.12.1-105
+- Dontaudit openshift domains trying to use rawip_sockets, this is caused by a bad check in the kernel.
+- Allow git_system_t to read git_user_content if the git_system_enable_homedirs boolean is turned on
+- Add lsmd_plugin_t for lsm plugins
+- Allow dovecot-deliver to search mountpoints
+- Add labeling for /etc/mdadm.conf
+- Allow opelmi admin providers to dbus chat with init_t
+- Allow sblim domain to read /dev/urandom and /dev/random
+- Allow apmd to request the kernel load modules
+- Add glusterd_brick_t type
+- label mate-keyring-daemon with gkeyringd_exec_t
+- Add plymouthd_create_log()
+- Dontaudit leaks from openshift domains into mail domains, needs back port to RHEL6
+- Allow sssd to request the kernel loads modules
+- Allow gpg_agent to use ssh-add
+- Allow gpg_agent to use ssh-add
+- Dontaudit access check on /root for myslqd_safe_t
+- Allow ctdb to getattr on al filesystems
+- Allow abrt to stream connect to syslog
+- Allow dnsmasq to list dnsmasq.d directory
+- Watchdog opens the raw socket
+- Allow watchdog to read network state info
+- Dontaudit access check on lvm lock dir
+- Allow sosreport to send signull to setroubleshootd
+- Add setroubleshoot_signull() interface
+- Fix ldap_read_certs() interface
+- Allow sosreport all signal perms
+- Allow sosreport to run systemctl
+- Allow sosreport to dbus chat with rpm
+- Add glusterd_brick_t files type
+- Allow zabbix_agentd to read all domain state
+- Clean up rtas.if
+- Allow smoltclient to execute ldconfig
+- Allow sosreport to request the kernel to load a module
+- Fix userdom_confined_admin_template()
+- Add back exec_content boolean for secadm, logadm, auditadm
+- Fix files_filetrans_system_db_named_files() interface
+- Allow sulogin to getattr on /proc/kcore
+- Add filename transition also for servicelog.db-journal
+- Add files_dontaudit_access_check_root()
+- Add lvm_dontaudit_access_check_lock() interface
+
+* Thu Nov 21 2013 Miroslav Grepl <mgrepl@redhat.com> 3.12.1-104
+- Allow watchdog to read /etc/passwd
+- Allow browser plugins to connect to bumblebee
+- New policy for bumblebee and freqset
+- Add new policy for mip6d daemon
+- Add new policy for opensm daemon
+- Allow condor domains to read/write condor_master udp_socket
+- Allow openshift_cron_t to append to openshift log files, label /var/log/openshift
+- Add back file_pid_filetrans for /var/run/dlm_controld
+- Allow smbd_t to use inherited tmpfs content
+- Allow mcelog to use the /dev/cpu device
+- sosreport runs rpcinfo
+- sosreport runs subscription-manager
+- Allow staff_t to run frequency command
+- Allow systemd_tmpfiles to relabel log directories
+- Allow staff_t to read xserver_log file
+- Label hsperfdata_root as tmp_t
+
 * Wed Nov 20 2013 Miroslav Grepl <mgrepl@redhat.com> 3.12.1-103
 - More sosreport fixes to make ABRT working
-        
+
 * Fri Nov 15 2013 Miroslav Grepl <mgrepl@redhat.com> 3.12.1-102
 - Fix files_dontaudit_unmount_all_mountpoints()
 - Add support for 2608-2609 tcp/udp ports
