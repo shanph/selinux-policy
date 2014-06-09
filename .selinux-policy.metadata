@@ -1,4 +1,4 @@
-c21486a81ff7085007e30fb56ae8612607c5cc69 SOURCES/serefpolicy-contrib-3.12.1.tgz
-4fd46bd7d17737f2e7c0b287a11d6362d918da8f SOURCES/permissivedomains.pp
 5054dc0ae7f7378c4f6670e89544246558e20dc4 SOURCES/config.tgz
+4fd46bd7d17737f2e7c0b287a11d6362d918da8f SOURCES/permissivedomains.pp
 7c268e6658b024719ad248965c27398304ac9e79 SOURCES/serefpolicy-3.12.1.tgz
+c21486a81ff7085007e30fb56ae8612607c5cc69 SOURCES/serefpolicy-contrib-3.12.1.tgz
