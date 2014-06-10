@@ -19,12 +19,14 @@
 Summary: SELinux policy configuration
 Name: selinux-policy
 Version: 3.12.1
-Release: 153%{?dist}
+Release: 153%{?dist}.10
 License: GPLv2+
 Group: System Environment/Base
 Source: serefpolicy-%{version}.tgz
 patch: policy-f20-base.patch
 patch1: policy-f20-contrib.patch
+patch2: policy-rhel-7.0.z-base.patch
+patch3: policy-rhel-7.0.z-contrib.patch
 Source1: modules-targeted-base.conf 
 Source31: modules-targeted-contrib.conf
 Source2: booleans-targeted.conf
@@ -316,9 +318,11 @@ Based off of reference policy: Checked out revision  2.20091117
 %prep 
 %setup -n serefpolicy-contrib-%{version} -q -b 29
 %patch1 -p1
+%patch3 -p1
 contrib_path=`pwd`
 %setup -n serefpolicy-%{version} -q
 %patch -p1
+%patch2 -p1
 refpolicy_path=`pwd`
 cp $contrib_path/* $refpolicy_path/policy/modules/contrib
 
@@ -579,6 +583,56 @@ SELinux Reference policy mls base module.
 %endif
 
 %changelog
+* Tue Jun 3 2014 Miroslav Grepl <mgrepl@redhat.com> 3.12.1-153.el7_0.10
+- Allow swift to execute bin_t
+- Allow swift to bind http_cache
+- Label /var/log/horizon as an apache log
+
+* Tue Jun 3 2014 Miroslav Grepl <mgrepl@redhat.com> 3.12.1-153.el7_0.9
+- Allow neutron to bind xserver port
+- Allow neutron to execute kmod in insmod_t
+- Allow neutron to execute udevadm in udev_t
+- Allow keepalived to execute bin_t/shell_exec_t
+- Allow neutron to create sock files
+- Label swift-proxy-server as swift_exec_t
+
+* Wed May 21 2014 Miroslav Grepl <mgrepl@redhat.com> 3.12.1-153.el7_0.8
+- Allow rsync to create  swift_server.lock with swift.log labeling
+- Add labeling for swift lock files
+- Make neutron_t as unconfined domain
+
+* Mon May 19 2014 Miroslav Grepl <mgrepl@redhat.com> 3.12.1-153.el7_0.7
+- Add more fixes for OpenStack
+- Add fixes for geard
+- Make openwsman as unconfined_domain in RHEL7.0
+
+* Mon May 12 2014 Miroslav Grepl <mgrepl@redhat.com> 3.12.1-153.el7_0.6
+- Back port openstack fixes
+- svirt sandbox domains to read gear content in /run
+- Allow gear_t to manage openshift files
+
+* Wed May 7 2014 Miroslav Grepl <mgrepl@redhat.com> 3.12.1-153.el7_0.5
+-  More rules for gears and openshift
+Resolves:#1092405
+
+* Wed May 7 2014 Miroslav Grepl <mgrepl@redhat.com> 3.12.1-153.el7_0.4
+- Bump release to rebuild as z-stream
+Resolves:#1092405
+
+* Wed May 7 2014 Miroslav Grepl <mgrepl@redhat.com> 3.12.1-153.el7_0.3
+- Add fixes for gear to just execute ifconfig
+- More fixes for mongod_t
+Resolves:#1092405
+
+* Mon May 5 2014 Miroslav Grepl <mgrepl@redhat.com> 3.12.1-153.el7_0.2
+- Bump release
+Resolves:#1092405
+
+* Mon May 5 2014 Miroslav Grepl <mgrepl@redhat.com> 3.12.1-153.el7_0.1
+- Allow mongod to create sock files
+Resolves:#1092405
+- Add additional fixes related to docker and upgrade issues
+
 * Mon Apr 7 2014 Miroslav Grepl <mgrepl@redhat.com> 3.12.1-153
 - Change hsperfdata_root to have as user_tmp_t
 Resolves:#1076523

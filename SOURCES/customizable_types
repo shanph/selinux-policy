@@ -1,7 +1,7 @@
 sandbox_file_t
 svirt_image_t
 svirt_home_t
-svirt_lxc_file_t
+svirt_sandbox_file_t
 virt_content_t
 httpd_user_htaccess_t
 httpd_user_script_exec_t
