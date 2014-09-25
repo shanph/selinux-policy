@@ -19,7 +19,7 @@
 Summary: SELinux policy configuration
 Name: selinux-policy
 Version: 3.12.1
-Release: 153%{?dist}.10
+Release: 153%{?dist}.11
 License: GPLv2+
 Group: System Environment/Base
 Source: serefpolicy-%{version}.tgz
@@ -583,6 +583,11 @@ SELinux Reference policy mls base module.
 %endif
 
 %changelog
+* Fri Aug 22 2014 Miroslav Grepl <mgrepl@redhat.com> 3.12.1-153.el7_0.11
+- Back port OpenStack fixes
+- Allow mdadm to connect to own socket created by mdadm running as kernel_t
+Resolves:#1132828
+
 * Tue Jun 3 2014 Miroslav Grepl <mgrepl@redhat.com> 3.12.1-153.el7_0.10
 - Allow swift to execute bin_t
 - Allow swift to bind http_cache
