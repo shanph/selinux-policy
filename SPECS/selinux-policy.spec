@@ -19,7 +19,7 @@
 Summary: SELinux policy configuration
 Name: selinux-policy
 Version: 3.12.1
-Release: 153%{?dist}.11
+Release: 153%{?dist}.12
 License: GPLv2+
 Group: System Environment/Base
 Source: serefpolicy-%{version}.tgz
@@ -27,6 +27,7 @@ patch: policy-f20-base.patch
 patch1: policy-f20-contrib.patch
 patch2: policy-rhel-7.0.z-base.patch
 patch3: policy-rhel-7.0.z-contrib.patch
+patch4: 0001-Allow-logrotate-to-manage-virt_cache.patch
 Source1: modules-targeted-base.conf 
 Source31: modules-targeted-contrib.conf
 Source2: booleans-targeted.conf
@@ -319,6 +320,7 @@ Based off of reference policy: Checked out revision  2.20091117
 %setup -n serefpolicy-contrib-%{version} -q -b 29
 %patch1 -p1
 %patch3 -p1
+%patch4 -p1
 contrib_path=`pwd`
 %setup -n serefpolicy-%{version} -q
 %patch -p1
@@ -583,6 +585,10 @@ SELinux Reference policy mls base module.
 %endif
 
 %changelog
+* Tue Nov 4 2014 Miroslav Grepl <mgrepl@redhat.com> 3.12.1-153.el7_0.12
+- Allow logrotate to manage virt_cache_t type
+Resolves:#1159834
+
 * Fri Aug 22 2014 Miroslav Grepl <mgrepl@redhat.com> 3.12.1-153.el7_0.11
 - Back port OpenStack fixes
 - Allow mdadm to connect to own socket created by mdadm running as kernel_t
