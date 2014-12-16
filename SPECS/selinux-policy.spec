@@ -19,7 +19,7 @@
 Summary: SELinux policy configuration
 Name: selinux-policy
 Version: 3.12.1
-Release: 153%{?dist}.12
+Release: 153%{?dist}.13
 License: GPLv2+
 Group: System Environment/Base
 Source: serefpolicy-%{version}.tgz
@@ -28,6 +28,9 @@ patch1: policy-f20-contrib.patch
 patch2: policy-rhel-7.0.z-base.patch
 patch3: policy-rhel-7.0.z-contrib.patch
 patch4: 0001-Allow-logrotate-to-manage-virt_cache.patch
+patch5: 0002-Add-support-for-vdsm.patch
+patch6: 0003-ALlow-sanlock_t-to-read-sysfs.patch
+patch7: 0004-ALlow-sanlock-to-send-a-signal-to-virtd_t.patch
 Source1: modules-targeted-base.conf 
 Source31: modules-targeted-contrib.conf
 Source2: booleans-targeted.conf
@@ -321,6 +324,9 @@ Based off of reference policy: Checked out revision  2.20091117
 %patch1 -p1
 %patch3 -p1
 %patch4 -p1
+%patch5 -p1
+%patch6 -p1
+%patch7 -p1
 contrib_path=`pwd`
 %setup -n serefpolicy-%{version} -q
 %patch -p1
@@ -585,6 +591,13 @@ SELinux Reference policy mls base module.
 %endif
 
 %changelog
+* Wed Nov 10 2014 Miroslav Grepl <mgrepl@redhat.com> 3.12.1-153.el7_0.13
+-  Add support for vdsm.
+Resolves:#1172146
+- ALlow sanlock to send a signal to virtd_t.
+- ALlow sanlock_t to read sysfs.
+Resolves:#1172147
+
 * Tue Nov 4 2014 Miroslav Grepl <mgrepl@redhat.com> 3.12.1-153.el7_0.12
 - Allow logrotate to manage virt_cache_t type
 Resolves:#1159834

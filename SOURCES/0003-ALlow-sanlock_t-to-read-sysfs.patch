@@ -1,0 +1,24 @@
+From 135c23ffdb9d847dfc2e1fb9d412b2c1728a6a89 Mon Sep 17 00:00:00 2001
+From: Miroslav Grepl <mgrepl@redhat.com>
+Date: Tue, 14 Oct 2014 14:13:07 +0200
+Subject: [PATCH 3/3] ALlow sanlock_t to read sysfs.
+
+---
+ sanlock.te | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/sanlock.te b/sanlock.te
+index c60eacd..735ebd1 100644
+--- a/sanlock.te
++++ b/sanlock.te
+@@ -79,6 +79,7 @@ storage_raw_rw_fixed_disk(sanlock_t)
+ 
+ dev_read_rand(sanlock_t)
+ dev_read_urand(sanlock_t)
++dev_read_sysfs(sanlock_t)
+ 
+ auth_use_nsswitch(sanlock_t)
+ 
+-- 
+2.1.0
+
