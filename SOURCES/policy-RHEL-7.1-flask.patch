@@ -1,0 +1,21 @@
+diff --git a/policy/flask/access_vectors b/policy/flask/access_vectors
+index 1afd77b..0d5d828 100644
+--- a/policy/flask/access_vectors
++++ b/policy/flask/access_vectors
+@@ -401,6 +401,7 @@ class system
+     enable
+     disable
+     reload
++    kill
+ }
+ 
+ #
+@@ -886,6 +887,8 @@ class service
+ 	reload
+ 	enable
+ 	disable
++    kill
++    load
+ }
+ 
+ class proxy
