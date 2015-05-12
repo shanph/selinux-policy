@@ -1,0 +1,111 @@
+diff --git a/mongodb.fc b/mongodb.fc
+index 91adcaf..e9e6bc5 100644
+--- a/mongodb.fc
++++ b/mongodb.fc
+@@ -1,9 +1,15 @@
+ /etc/rc\.d/init\.d/mongod	--	gen_context(system_u:object_r:mongod_initrc_exec_t,s0)
++/etc/rc\.d/init\.d/mongos	--	gen_context(system_u:object_r:mongod_initrc_exec_t,s0)
++
++/usr/lib/systemd/system/mongod.*    --     gen_context(system_u:object_r:mongod_unit_file_t,s0)
++/usr/lib/systemd/system/mongos.*    --     gen_context(system_u:object_r:mongod_unit_file_t,s0)
+ 
+ /usr/bin/mongod	                                --	gen_context(system_u:object_r:mongod_exec_t,s0)
+ /usr/bin/mongos	                                --	gen_context(system_u:object_r:mongod_exec_t,s0)
+ /usr/share/aeolus-conductor/dbomatic/dbomatic   --   gen_context(system_u:object_r:mongod_exec_t,s0)
+ 
++/usr/libexec/mongodb-scl-helper             --      gen_context(system_u:object_r:mongod_exec_t,s0)
++
+ /var/lib/mongo.*	gen_context(system_u:object_r:mongod_var_lib_t,s0)
+ 
+ /var/log/mongo.*	                                    gen_context(system_u:object_r:mongod_log_t,s0)
+diff --git a/mongodb.te b/mongodb.te
+index dec8a95..d3fdae4 100644
+--- a/mongodb.te
++++ b/mongodb.te
+@@ -12,6 +12,9 @@ init_daemon_domain(mongod_t, mongod_exec_t)
+ type mongod_initrc_exec_t;
+ init_script_file(mongod_initrc_exec_t)
+ 
++type mongod_unit_file_t;
++systemd_unit_file(mongod_unit_file_t)
++
+ type mongod_log_t;
+ logging_log_file(mongod_log_t)
+ 
+@@ -30,7 +33,7 @@ files_tmp_file(mongod_tmp_t)
+ #
+ 
+ 
+-allow mongod_t self:process { setsched signal };
++allow mongod_t self:process { setsched signal execmem };
+ allow mongod_t self:fifo_file rw_fifo_file_perms;
+ 
+ allow mongod_t self:netlink_route_socket r_netlink_socket_perms;
+@@ -69,6 +72,8 @@ corenet_tcp_connect_mongod_port(mongod_t)
+ corenet_tcp_bind_mongod_port(mongod_t)
+ corenet_tcp_bind_generic_node(mongod_t)
+ 
++auth_use_nsswitch(mongod_t)
++
+ dev_read_sysfs(mongod_t)
+ dev_read_urand(mongod_t)
+ 
+diff --git a/mysql.fc b/mysql.fc
+index 4a315d5..c2c13aa 100644
+--- a/mysql.fc
++++ b/mysql.fc
+@@ -14,6 +14,7 @@ HOME_DIR/\.my\.cnf -- gen_context(system_u:object_r:mysqld_home_t, s0)
+ #
+ /etc/my\.cnf		--	gen_context(system_u:object_r:mysqld_etc_t,s0)
+ /etc/mysql(/.*)?		gen_context(system_u:object_r:mysqld_etc_t,s0)
++/etc/my\.cnf\.d(/.*)?		gen_context(system_u:object_r:mysqld_etc_t,s0)
+ /etc/rc\.d/init\.d/mysqld --	gen_context(system_u:object_r:mysqld_initrc_exec_t,s0)
+ /etc/rc\.d/init\.d/mysqlmanager -- gen_context(system_u:object_r:mysqlmanagerd_initrc_exec_t,s0)
+ 
+@@ -24,6 +25,8 @@ HOME_DIR/\.my\.cnf -- gen_context(system_u:object_r:mysqld_home_t, s0)
+ /usr/bin/mysql_upgrade	--	gen_context(system_u:object_r:mysqld_exec_t,s0)
+ 
+ /usr/libexec/mysqld	--	gen_context(system_u:object_r:mysqld_exec_t,s0)
++/usr/libexec/mysqld_safe-scl-helper --  gen_context(system_u:object_r:mysqld_safe_exec_t,s0)
++
+ 
+ /usr/sbin/mysqld(-max)?	--	gen_context(system_u:object_r:mysqld_exec_t,s0)
+ /usr/sbin/mysqlmanager	--	gen_context(system_u:object_r:mysqlmanagerd_exec_t,s0)
+diff --git a/mysql.te b/mysql.te
+index e14423d..976d57e 100644
+--- a/mysql.te
++++ b/mysql.te
+@@ -132,7 +132,7 @@ files_search_var_lib(mysqld_t)
+ files_search_pids(mysqld_t)
+ files_getattr_all_sockets(mysqld_t)
+ 
+-auth_use_nsswitch(mysqld_t)
++auth_use_pam(mysqld_t)
+ 
+ logging_send_syslog_msg(mysqld_t)
+ 
+diff --git a/rhcs.te b/rhcs.te
+index 25c0f70..0706417 100644
+--- a/rhcs.te
++++ b/rhcs.te
+@@ -218,6 +218,8 @@ init_read_script_state(cluster_t)
+ init_rw_script_tmp_files(cluster_t)
+ init_manage_script_status_files(cluster_t)
+ 
++systemd_dbus_chat_logind(cluster_t)
++
+ userdom_delete_user_tmp_files(cluster_t)
+ userdom_rw_user_tmp_files(cluster_t)
+ userdom_kill_all_users(cluster_t)
+diff --git a/virt.if b/virt.if
+index 01641f5..90e8a28 100644
+--- a/virt.if
++++ b/virt.if
+@@ -357,6 +357,7 @@ interface(`virt_read_pid_files',`
+ 
+ 	files_search_pids($1)
+ 	read_files_pattern($1, virt_var_run_t, virt_var_run_t)
++    read_lnk_files_pattern($1, virt_var_run_t, virt_var_run_t)
+ ')
+ 
+ ########################################

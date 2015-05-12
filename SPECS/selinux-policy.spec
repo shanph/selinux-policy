@@ -19,13 +19,15 @@
 Summary: SELinux policy configuration
 Name: selinux-policy
 Version: 3.13.1
-Release: 23%{?dist}
+Release: 23%{?dist}.7
 License: GPLv2+
 Group: System Environment/Base
 Source: serefpolicy-%{version}.tgz
 patch: policy-rhel-7.1-base.patch
 patch1: policy-rhel-7.1-contrib.patch
 patch2: policy-RHEL-7.1-flask.patch
+patch3: policy-rhel-7.1.z-base.patch
+patch4: policy-rhel-7.1.z-contrib.patch
 Source1: modules-targeted-base.conf 
 Source31: modules-targeted-contrib.conf
 Source2: booleans-targeted.conf
@@ -328,9 +330,11 @@ Based off of reference policy: Checked out revision  2.20091117
 %prep 
 %setup -n serefpolicy-contrib-%{version} -q -b 29
 %patch1 -p1
+%patch4 -p1
 contrib_path=`pwd`
 %setup -n serefpolicy-%{version} -q
 %patch -p1
+%patch3 -p1
 refpolicy_path=`pwd`
 cp $contrib_path/* $refpolicy_path/policy/modules/contrib
 rm -rf $refpolicy_path/policy/modules/contrib/kubernetes.*
@@ -604,6 +608,45 @@ SELinux Reference policy mls base module.
 %endif
 
 %changelog
+* Wed Apr 29 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_7.7
+- Label /usr/libexec/postgresql-ctl as postgresql_exec_t
+- Update virt_read_pid_files() interface to allow read also symlinks with virt_var_run_t type.
+- Add labeling for /usr/libexec/mysqld_safe-scl-helper.
+- Add support for /usr/libexec/mongodb-scl-helper RHSCL helper script.
+Resolves:#1209942 
+- Allow mysqld_t to use pam.It is needed by MariDB if auth_apm.so auth plugin is used
+Resolves:#1214236
+- Added label mysqld_etc_t for /etc/my.cnf.d/ dir.
+Resolves:#1214235
+- Add support for mongod/mongos systemd unit files.
+Resolves:#1214194
+
+* Tue Apr 21 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_7.6
+- Make mongodb_t as nsswitch domain
+- ALlow mongod execmem by default
+Resolves:#1212970
+
+* Wed Apr 8 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_7.5
+- Update policy/mls for sockets related to accept.
+Resolves:#1207549
+
+* Tue Mar 31 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_7.4
+- Update policy/mls for sockets. Rules were contradictory.
+Resolves:#1207549
+
+* Wed Mar 25 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_7.3
+- Dontaudit ifconfig writing inhertited /var/log/pluto.log.
+Resolves:#1205580
+- Update init_rw_tcp_sockets() interface to use getopt and setopt.
+
+* Mon Mar 23 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_7.2
+- Use enable_mls instead of enabled_mls in userdomain.if
+Resolves:#1204778
+
+* Mon Mar 23 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_7.1
+- Allow a user to login with different security level via ssh.
+Resolves:#1204778
+
 * Wed Jan 30 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23
 - Update seutil_manage_config() interface.
 Resolves:#1185962

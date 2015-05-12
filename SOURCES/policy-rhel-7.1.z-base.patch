@@ -1,0 +1,125 @@
+diff --git a/policy/mls b/policy/mls
+index 9e0c245..53c2f8c 100644
+--- a/policy/mls
++++ b/policy/mls
+@@ -177,7 +177,7 @@ mlsconstrain { socket tcp_socket udp_socket rawip_socket netlink_socket packet_s
+ 
+ 
+ # the socket "read" ops (note the check is dominance of the low level)
+-mlsconstrain { socket tcp_socket udp_socket rawip_socket netlink_socket packet_socket key_socket unix_stream_socket unix_dgram_socket netlink_route_socket netlink_firewall_socket netlink_tcpdiag_socket netlink_nflog_socket netlink_xfrm_socket netlink_selinux_socket netlink_audit_socket netlink_ip6fw_socket netlink_dnrt_socket } { read getattr listen accept getopt recv_msg }
++mlsconstrain { socket tcp_socket udp_socket rawip_socket netlink_socket packet_socket key_socket unix_stream_socket unix_dgram_socket netlink_route_socket netlink_firewall_socket netlink_tcpdiag_socket netlink_nflog_socket netlink_xfrm_socket netlink_selinux_socket netlink_audit_socket netlink_ip6fw_socket netlink_dnrt_socket } { read getattr listen getopt recv_msg }
+ 	(( l1 dom l2 ) or
+ 	 (( t1 == mlsnetreadtoclr ) and ( h1 dom l2 )) or
+ 	 ( t1 == mlsnetread ));
+diff --git a/policy/modules/services/postgresql.fc b/policy/modules/services/postgresql.fc
+index 947af6c..59fe535 100644
+--- a/policy/modules/services/postgresql.fc
++++ b/policy/modules/services/postgresql.fc
+@@ -12,6 +12,8 @@
+ /usr/bin/(se)?postgres		--	gen_context(system_u:object_r:postgresql_exec_t,s0)
+ /usr/bin/pg_ctl				--	gen_context(system_u:object_r:postgresql_exec_t,s0)
+ 
++/usr/libexec/postgresql-ctl     --  gen_context(system_u:object_r:postgresql_exec_t,s0)
++
+ /usr/lib/pgsql/test/regress(/.*)?	gen_context(system_u:object_r:postgresql_db_t,s0)
+ /usr/lib/pgsql/test/regress/pg_regress -- gen_context(system_u:object_r:postgresql_exec_t,s0)
+ /usr/lib/postgresql/bin/.*	--	gen_context(system_u:object_r:postgresql_exec_t,s0)
+diff --git a/policy/modules/services/ssh.te b/policy/modules/services/ssh.te
+index 2ef9dc6..cc76bdc 100644
+--- a/policy/modules/services/ssh.te
++++ b/policy/modules/services/ssh.te
+@@ -56,6 +56,7 @@ ssh_server_template(sshd)
+ init_daemon_domain(sshd_t, sshd_exec_t)
+ mls_trusted_object(sshd_t)
+ mls_process_write_all_levels(sshd_t)
++mls_dbus_send_all_levels(sshd_t)
+ 
+ type sshd_initrc_exec_t;
+ init_script_file(sshd_initrc_exec_t)
+diff --git a/policy/modules/system/init.if b/policy/modules/system/init.if
+index b88e8a2..b13579d 100644
+--- a/policy/modules/system/init.if
++++ b/policy/modules/system/init.if
+@@ -2602,7 +2602,7 @@ interface(`init_rw_tcp_sockets',`
+         type init_t;
+     ')
+ 
+-    allow $1 init_t:tcp_socket { read write };
++    allow $1 init_t:tcp_socket { read write getattr getopt setopt };
+ ')
+ 
+ ########################################
+diff --git a/policy/modules/system/ipsec.if b/policy/modules/system/ipsec.if
+index 12c7fa6..0cd667e 100644
+--- a/policy/modules/system/ipsec.if
++++ b/policy/modules/system/ipsec.if
+@@ -541,3 +541,22 @@ interface(`ipsec_mgmt_systemctl',`
+ 
+     ps_process_pattern($1, ipsec_mgmt_t)
+ ')
++
++########################################
++## <summary>
++##	Do not audit attempts to write the ipsec
++##	log files.
++## </summary>
++## <param name="domain">
++##	<summary>
++##	Domain to not audit.
++##	</summary>
++## </param>
++#
++interface(`ipsec_dontaudit_write_log',`
++	gen_require(`
++		type ipsec_log_t;
++	')
++
++	dontaudit $1 ipsec_log_t:file rw_inherited_file_perms;
++')
+diff --git a/policy/modules/system/sysnetwork.te b/policy/modules/system/sysnetwork.te
+index ca1b2bc..b3417f5 100644
+--- a/policy/modules/system/sysnetwork.te
++++ b/policy/modules/system/sysnetwork.te
+@@ -447,6 +447,7 @@ optional_policy(`
+ optional_policy(`
+ 	ipsec_write_pid(ifconfig_t)
+ 	ipsec_setcontext_default_spd(ifconfig_t)
++    ipsec_dontaudit_write_log(ifconfig_t)
+ ')
+ 
+ optional_policy(`
+diff --git a/policy/modules/system/systemd.te b/policy/modules/system/systemd.te
+index db531dc..7c2a68e 100644
+--- a/policy/modules/system/systemd.te
++++ b/policy/modules/system/systemd.te
+@@ -96,6 +96,7 @@ allow systemd_logind_t self:unix_dgram_socket create_socket_perms;
+ 
+ mls_file_read_all_levels(systemd_logind_t)
+ mls_file_write_all_levels(systemd_logind_t)
++mls_dbus_send_all_levels(systemd_logind_t)
+ 
+ files_delete_tmpfs_files(systemd_logind_t)
+ 
+diff --git a/policy/modules/system/userdomain.if b/policy/modules/system/userdomain.if
+index 05274ae..29b37bc 100644
+--- a/policy/modules/system/userdomain.if
++++ b/policy/modules/system/userdomain.if
+@@ -169,6 +169,7 @@ template(`userdom_base_user_template',`
+ 	
+ 	optional_policy(`
+ 		ssh_rw_stream_sockets($1_usertype)
++        ssh_rw_dgram_sockets($1_usertype)
+ 		ssh_delete_tmp($1_t)
+ 		ssh_signal($1_t)
+ 	')
+@@ -718,8 +719,8 @@ template(`userdom_common_user_template',`
+ 	application_getattr_socket($1_usertype)
+ 
+ 
+-    ifdef(`enabled_mls',`
+-        init_rw_tcp_sockets($1_usertype)
++    ifdef(`enable_mls',`
++        init_rw_tcp_sockets($1_t)
+     ')
+ 
+ 	logging_send_syslog_msg($1_t)
