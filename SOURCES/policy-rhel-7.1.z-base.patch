@@ -11,6 +11,55 @@ index 9e0c245..53c2f8c 100644
  	(( l1 dom l2 ) or
  	 (( t1 == mlsnetreadtoclr ) and ( h1 dom l2 )) or
  	 ( t1 == mlsnetread ));
+diff --git a/policy/modules/admin/sudo.if b/policy/modules/admin/sudo.if
+index aa51ab2..2e75ec7 100644
+--- a/policy/modules/admin/sudo.if
++++ b/policy/modules/admin/sudo.if
+@@ -126,3 +126,22 @@ interface(`sudo_exec',`
+ 
+ 	can_exec($1, sudo_exec_t)
+ ')
++
++######################################
++## <summary>
++##  Allow to manage sudo database in called domain.
++## </summary>
++## <param name="domain">
++##  <summary>
++##  Domain allowed access.
++##  </summary>
++## </param>
++#
++interface(`sudo_manage_db',`
++    gen_require(`
++        type sudo_db_t;
++    ')
++    
++    manage_dirs_pattern($1, sudo_db_t, sudo_db_t)
++    manage_files_pattern($1, sudo_db_t, sudo_db_t)
++')
+diff --git a/policy/modules/kernel/corecommands.fc b/policy/modules/kernel/corecommands.fc
+index 9a8ff3e..0960389 100644
+--- a/policy/modules/kernel/corecommands.fc
++++ b/policy/modules/kernel/corecommands.fc
+@@ -61,6 +61,8 @@ ifdef(`distro_redhat',`
+ /etc/cron.weekly(/.*)?			gen_context(system_u:object_r:bin_t,s0)
+ /etc/cron.monthly(/.*)?			gen_context(system_u:object_r:bin_t,s0)
+ 
++/etc/ctdb/events\.d/.*       --  gen_context(system_u:object_r:bin_t,s0)
++
+ /etc/dhcp/dhclient\.d(/.*)?		gen_context(system_u:object_r:bin_t,s0)
+ 
+ /etc/hotplug/.*agent		--	gen_context(system_u:object_r:bin_t,s0)
+@@ -482,6 +484,8 @@ ifdef(`distro_suse', `
+ /var/qmail/bin(/.*)?			gen_context(system_u:object_r:bin_t,s0)
+ /var/qmail/rc			--	gen_context(system_u:object_r:bin_t,s0)
+ 
++/var/lib/glusterd/hooks/.*/.*\.sh -- gen_context(system_u:object_r:bin_t,s0)
++
+ ifdef(`distro_suse',`
+ /var/lib/samba/bin/.+			gen_context(system_u:object_r:bin_t,s0)
+ ')
 diff --git a/policy/modules/services/postgresql.fc b/policy/modules/services/postgresql.fc
 index 947af6c..59fe535 100644
 --- a/policy/modules/services/postgresql.fc

@@ -1,3 +1,390 @@
+diff --git a/apache.te b/apache.te
+index 3226dec..e9c7099 100644
+--- a/apache.te
++++ b/apache.te
+@@ -1028,6 +1028,7 @@ optional_policy(`
+ 
+ optional_policy(`
+ 	nagios_read_config(httpd_t)
++    nagios_read_lib(httpd_t)
+ 	nagios_read_log(httpd_t)
+ ')
+ 
+diff --git a/ctdb.if b/ctdb.if
+index e99c5c6..ffc5497 100644
+--- a/ctdb.if
++++ b/ctdb.if
+@@ -38,6 +38,23 @@ interface(`ctdbd_initrc_domtrans',`
+ 	init_labeled_script_domtrans($1, ctdbd_initrc_exec_t)
+ ')
+ 
++#######################################
++## <summary>
++##  Allow domain to signal ctdbd.
++## </summary>
++## <param name="domain">
++##  <summary>
++##  Domain allowed access.
++##  </summary>
++## </param>
++#
++interface(`ctdbd_signal',`
++    gen_require(`
++        type ctdbd_t;
++    ')
++        allow $1 ctdbd_t:process signal;
++')
++
+ ########################################
+ ## <summary>
+ ##	Read ctdbd's log files.
+@@ -100,26 +117,26 @@ interface(`ctdbd_manage_log',`
+ 
+ ########################################
+ ## <summary>
+-##	Search ctdbd lib directories.
++##     Manage ctdbd lib files.
+ ## </summary>
+ ## <param name="domain">
+-##	<summary>
+-##	Domain allowed access.
+-##	</summary>
++##     <summary>
++##     Domain allowed access.
++##     </summary>
+ ## </param>
+ #
+-interface(`ctdbd_search_lib',`
+-	gen_require(`
+-		type ctdbd_var_lib_t;
+-	')
++interface(`ctdbd_manage_var_files',`
++       gen_require(`
++               type ctdbd_var_t;
++       ')
+ 
+-	allow $1 ctdbd_var_lib_t:dir search_dir_perms;
+-	files_search_var_lib($1)
++       files_search_var_lib($1)
++    manage_files_pattern($1, ctdbd_var_t, ctdbd_var_t)
+ ')
+ 
+ ########################################
+ ## <summary>
+-##	Read ctdbd lib files.
++##	Search ctdbd lib directories.
+ ## </summary>
+ ## <param name="domain">
+ ##	<summary>
+@@ -127,18 +144,18 @@ interface(`ctdbd_search_lib',`
+ ##	</summary>
+ ## </param>
+ #
+-interface(`ctdbd_read_lib_files',`
++interface(`ctdbd_search_lib',`
+ 	gen_require(`
+ 		type ctdbd_var_lib_t;
+ 	')
+ 
++	allow $1 ctdbd_var_lib_t:dir search_dir_perms;
+ 	files_search_var_lib($1)
+-        read_files_pattern($1, ctdbd_var_lib_t, ctdbd_var_lib_t)
+ ')
+ 
+ ########################################
+ ## <summary>
+-##	Manage ctdbd lib files.
++##	Read ctdbd lib files.
+ ## </summary>
+ ## <param name="domain">
+ ##	<summary>
+@@ -146,13 +163,13 @@ interface(`ctdbd_read_lib_files',`
+ ##	</summary>
+ ## </param>
+ #
+-interface(`ctdbd_manage_lib_files',`
++interface(`ctdbd_read_lib_files',`
+ 	gen_require(`
+ 		type ctdbd_var_lib_t;
+ 	')
+ 
+ 	files_search_var_lib($1)
+-        manage_files_pattern($1, ctdbd_var_lib_t, ctdbd_var_lib_t)
++        read_files_pattern($1, ctdbd_var_lib_t, ctdbd_var_lib_t)
+ ')
+ 
+ ########################################
+@@ -165,13 +182,13 @@ interface(`ctdbd_manage_lib_files',`
+ ##	</summary>
+ ## </param>
+ #
+-interface(`ctdbd_manage_var_files',`
++interface(`ctdbd_manage_lib_files',`
+ 	gen_require(`
+-		type ctdbd_var_t;
++		type ctdbd_var_lib_t;
+ 	')
+ 
+ 	files_search_var_lib($1)
+-    manage_files_pattern($1, ctdbd_var_t, ctdbd_var_t)
++        manage_files_pattern($1, ctdbd_var_lib_t, ctdbd_var_lib_t)
+ ')
+ 
+ ########################################
+diff --git a/ctdb.te b/ctdb.te
+index 2ab29db..61a9e2d 100644
+--- a/ctdb.te
++++ b/ctdb.te
+@@ -44,6 +44,7 @@ allow ctdbd_t self:netlink_route_socket r_netlink_socket_perms;
+ allow ctdbd_t self:packet_socket create_socket_perms;
+ allow ctdbd_t self:tcp_socket create_stream_socket_perms;
+ allow ctdbd_t self:udp_socket create_socket_perms;
++allow ctdbd_t self:rawip_socket create_socket_perms;
+ 
+ append_files_pattern(ctdbd_t, ctdbd_log_t, ctdbd_log_t)
+ create_files_pattern(ctdbd_t, ctdbd_log_t, ctdbd_log_t)
+@@ -75,6 +76,8 @@ manage_files_pattern(ctdbd_t, ctdbd_var_run_t, ctdbd_var_run_t)
+ manage_sock_files_pattern(ctdbd_t, ctdbd_var_run_t, ctdbd_var_run_t)
+ files_pid_filetrans(ctdbd_t, ctdbd_var_run_t, dir)
+ 
++can_exec(ctdbd_t, ctdbd_exec_t)
++
+ kernel_read_network_state(ctdbd_t)
+ kernel_read_system_state(ctdbd_t)
+ kernel_rw_net_sysctls(ctdbd_t)
+@@ -89,6 +92,7 @@ corenet_udp_bind_generic_node(ctdbd_t)
+ corenet_sendrecv_ctdb_server_packets(ctdbd_t)
+ corenet_tcp_bind_ctdb_port(ctdbd_t)
+ corenet_udp_bind_ctdb_port(ctdbd_t)
++corenet_tcp_bind_smbd_port(ctdbd_t)
+ corenet_tcp_connect_ctdb_port(ctdbd_t)
+ corenet_tcp_sendrecv_ctdb_port(ctdbd_t)
+ 
+@@ -110,6 +114,8 @@ logging_send_syslog_msg(ctdbd_t)
+ 
+ miscfiles_read_public_files(ctdbd_t)
+ 
++userdom_home_manager(ctdbd_t)
++
+ optional_policy(`
+ 	consoletype_exec(ctdbd_t)
+ ')
+diff --git a/glusterd.if b/glusterd.if
+index c62ad86..5e3410a 100644
+--- a/glusterd.if
++++ b/glusterd.if
+@@ -117,6 +117,64 @@ interface(`glusterd_manage_log',`
+ 	manage_lnk_files_pattern($1, glusterd_log_t, glusterd_log_t)
+ ')
+ 
++######################################
++## <summary>
++##  Allow the specified domain to execute gluster's lib files.
++## </summary>
++## <param name="domain">
++##  <summary>
++##  Domain allowed access.
++##  </summary>
++## </param>
++#
++interface(`gluster_execute_lib',`
++    gen_require(`
++        type glusterd_var_lib_t;
++    ')
++
++    files_list_var_lib($1)
++    allow $1 glusterd_var_lib_t:dir search_dir_perms;
++    can_exec($1, glusterd_var_lib_t)
++')
++
++######################################
++## <summary>
++##  Read glusterd's config files.
++## </summary>
++## <param name="domain">
++##  <summary>
++##  Domain allowed access.
++##  </summary>
++## </param>
++#
++interface(`glusterd_read_conf',`
++       gen_require(`
++               type glusterd_conf_t;
++       ')
++
++    files_search_etc($1)
++    read_files_pattern($1, glusterd_conf_t, glusterd_conf_t)
++')
++
++######################################
++## <summary>
++##  Read and write /var/lib/glusterd files.
++## </summary>
++## <param name="domain">
++##  <summary>
++##  Domain allowed access.
++##  </summary>
++## </param>
++#
++interface(`glusterd_rw_lib',`
++       gen_require(`
++               type glusterd_var_lib_t;
++       ')
++
++    files_search_var_lib($1)
++    rw_files_pattern($1, glusterd_var_lib_t, glusterd_var_lib_t)
++')
++
+ ########################################
+ ## <summary>
+ ##	All of the rules required to administrate
+diff --git a/glusterd.te b/glusterd.te
+index fbc6a67..21a8c3d 100644
+--- a/glusterd.te
++++ b/glusterd.te
+@@ -31,6 +31,7 @@ gen_tunable(gluster_export_all_rw, true)
+ type glusterd_t;
+ type glusterd_exec_t;
+ init_daemon_domain(glusterd_t, glusterd_exec_t)
++domain_obj_id_change_exemption(glusterd_t)
+ 
+ type glusterd_conf_t;
+ files_type(glusterd_conf_t)
+@@ -58,13 +59,16 @@ files_type(glusterd_brick_t)
+ # Local policy
+ #
+ 
+-allow glusterd_t self:capability { sys_admin sys_resource dac_override chown dac_read_search fowner fsetid kill setgid setuid net_admin };
++allow glusterd_t self:capability { sys_admin sys_resource sys_ptrace dac_override chown dac_read_search fowner fsetid kill setgid setuid net_admin mknod net_raw };
+ 
+ allow glusterd_t self:capability2 block_suspend;
+-allow glusterd_t self:process { getcap setcap setrlimit signal_perms };
++allow glusterd_t self:process { getcap setcap setrlimit signal_perms setsched getsched };
++allow glusterd_t self:sem create_sem_perms;
+ allow glusterd_t self:fifo_file rw_fifo_file_perms;
+ allow glusterd_t self:tcp_socket { accept listen };
+ allow glusterd_t self:unix_stream_socket { accept listen connectto };
++allow glusterd_t self:rawip_socket create_socket_perms;
++allow glusterd_t self:unix_stream_socket create_stream_socket_perms;
+ 
+ manage_dirs_pattern(glusterd_t, glusterd_conf_t, glusterd_conf_t)
+ manage_files_pattern(glusterd_t, glusterd_conf_t, glusterd_conf_t)
+@@ -97,9 +101,13 @@ manage_dirs_pattern(glusterd_t, glusterd_brick_t, glusterd_brick_t)
+ manage_files_pattern(glusterd_t, glusterd_brick_t, glusterd_brick_t)
+ manage_fifo_files_pattern(glusterd_t, glusterd_brick_t, glusterd_brick_t)
+ manage_lnk_files_pattern(glusterd_t, glusterd_brick_t, glusterd_brick_t)
++manage_blk_files_pattern(glusterd_t, glusterd_brick_t, glusterd_brick_t)
++manage_chr_files_pattern(glusterd_t, glusterd_brick_t, glusterd_brick_t)
+ relabel_files_pattern(glusterd_t, glusterd_brick_t, glusterd_brick_t)
+ relabel_lnk_files_pattern(glusterd_t, glusterd_brick_t, glusterd_brick_t)
+ relabel_dirs_pattern(glusterd_t, glusterd_brick_t, glusterd_brick_t)
++relabel_chr_files_pattern(glusterd_t, glusterd_brick_t, glusterd_brick_t)
++relabel_blk_files_pattern(glusterd_t, glusterd_brick_t, glusterd_brick_t)
+ 
+ can_exec(glusterd_t, glusterd_exec_t)
+ 
+@@ -121,6 +129,7 @@ corenet_tcp_sendrecv_all_ports(glusterd_t)
+ corenet_udp_sendrecv_all_ports(glusterd_t)
+ corenet_tcp_bind_generic_node(glusterd_t)
+ corenet_udp_bind_generic_node(glusterd_t)
++corenet_raw_bind_generic_node(glusterd_t)
+ 
+ corenet_tcp_connect_gluster_port(glusterd_t)
+ corenet_tcp_bind_gluster_port(glusterd_t)
+@@ -144,6 +153,7 @@ corenet_tcp_connect_ssh_port(glusterd_t)
+ 
+ dev_read_sysfs(glusterd_t)
+ dev_read_urand(glusterd_t)
++dev_read_rand(glusterd_t)
+ 
+ domain_read_all_domains_state(glusterd_t)
+ 
+@@ -156,11 +166,23 @@ fs_getattr_all_fs(glusterd_t)
+ files_mounton_non_security(glusterd_t)
+ 
+ storage_rw_fuse(glusterd_t)
++#needed by /usr/sbin/xfs_db
++storage_raw_read_fixed_disk(glusterd_t)
++storage_raw_write_fixed_disk(glusterd_t)
+ 
+ auth_use_nsswitch(glusterd_t)
+ 
+ fs_getattr_all_fs(glusterd_t)
+ 
++init_domtrans_script(glusterd_t)
++init_initrc_domain(glusterd_t)
++init_read_script_state(glusterd_t)
++init_rw_script_tmp_files(glusterd_t)
++init_manage_script_status_files(glusterd_t)
++
++systemd_config_systemd_services(glusterd_t)
++systemd_signal_passwd_agent(glusterd_t)
++
+ logging_send_syslog_msg(glusterd_t)
+ libs_exec_ldconfig(glusterd_t)
+ 
+@@ -171,6 +193,9 @@ userdom_manage_user_home_dirs(glusterd_t)
+ userdom_filetrans_home_content(glusterd_t)
+ 
+ mount_domtrans(glusterd_t)
++
++fstools_domtrans(glusterd_t)
++
+ tunable_policy(`gluster_anon_write',`
+ 	miscfiles_manage_public_files(glusterd_t)
+ ') 
+@@ -188,6 +213,39 @@ tunable_policy(`gluster_export_all_rw',`
+ ')
+ 
+ optional_policy(`
++    ctdbd_domtrans(glusterd_t)
++    ctdbd_signal(glusterd_t)
++')
++
++optional_policy(`
++    dbus_system_bus_client(glusterd_t)
++    dbus_connect_system_bus(glusterd_t)
++
++    optional_policy(`
++        policykit_dbus_chat(glusterd_t)
++    ')
++')
++
++optional_policy(`
++    hostname_exec(glusterd_t)
++')
++
++optional_policy(`
++    lvm_domtrans(glusterd_t)
++')
++
++optional_policy(`
++    samba_domtrans_smbd(glusterd_t)
++    samba_systemctl(glusterd_t)
++    samba_signal_smbd(glusterd_t)
++    samba_manage_config(glusterd_t)
++')
++
++optional_policy(`
++    ssh_exec_keygen(glusterd_t)
++')
++
++optional_policy(`
+     rpc_domtrans_rpcd(glusterd_t)
+     rpc_kill_rpcd(glusterd_t)
+ ')
+@@ -197,5 +255,11 @@ optional_policy(`
+ ')
+ 
+ optional_policy(`
++    rhcs_dbus_chat_cluster(glusterd_t)
++    rhcs_domtrans_cluster(glusterd_t)
++    rhcs_systemctl_cluster(glusterd_t)
++')
++
++optional_policy(`
+ 	ssh_exec(glusterd_t)
+ ')
 diff --git a/mongodb.fc b/mongodb.fc
 index 91adcaf..e9e6bc5 100644
 --- a/mongodb.fc
@@ -84,6 +471,200 @@ index e14423d..976d57e 100644
  
  logging_send_syslog_msg(mysqld_t)
  
+diff --git a/nagios.if b/nagios.if
+index cad402c..ed3394e 100644
+--- a/nagios.if
++++ b/nagios.if
+@@ -72,6 +72,25 @@ interface(`nagios_read_config',`
+ 	allow $1 nagios_etc_t:file read_file_perms;
+ 	files_search_etc($1)
+ ')
++######################################
++## <summary>
++##	Read nagios lib files.
++## </summary>
++## <param name="domain">
++##	<summary>
++##	Domain allowed access.
++##	</summary>
++## </param>
++#
++interface(`nagios_read_lib',`
++	gen_require(`
++		type nagios_var_lib_t;
++	')
++
++	files_search_var($1)
++    list_dirs_pattern($1, nagios_var_lib_t, nagios_var_lib_t)
++	read_files_pattern($1, nagios_var_lib_t, nagios_var_lib_t)
++')
+ 
+ ######################################
+ ## <summary>
+diff --git a/nagios.te b/nagios.te
+index 75ed416..40e93b4 100644
+--- a/nagios.te
++++ b/nagios.te
+@@ -5,6 +5,25 @@ policy_module(nagios, 1.13.0)
+ # Declarations
+ #
+ 
++## <desc>
++## <p>
++## Allow nagios/nrpe to call sudo from NRPE utils scripts.
++## </p>
++## </desc>
++gen_tunable(nagios_run_sudo, false)
++
++## <desc>
++## <p>
++## Allow nagios run in conjunction with PNP4Nagios.
++## </p>
++## </desc>
++gen_tunable(nagios_run_pnp4nagios, false)
++
++gen_require(`
++    class passwd rootok;
++    class passwd passwd;
++')
++
+ attribute nagios_plugin_domain;
+ 
+ type nagios_t;
+@@ -124,7 +143,8 @@ files_spool_filetrans(nagios_t, nagios_spool_t, { file fifo_file })
+ 
+ manage_files_pattern(nagios_t, nagios_var_lib_t, nagios_var_lib_t)
+ manage_fifo_files_pattern(nagios_t, nagios_var_lib_t, nagios_var_lib_t)
+-files_var_lib_filetrans(nagios_t, nagios_var_lib_t, { file fifo_file })
++manage_dirs_pattern(nagios_t, nagios_var_lib_t, nagios_var_lib_t)
++files_var_lib_filetrans(nagios_t, nagios_var_lib_t, { dir file fifo_file })
+ 
+ kernel_read_system_state(nagios_t)
+ kernel_read_kernel_sysctls(nagios_t)
+@@ -168,6 +188,35 @@ mta_send_mail(nagios_t)
+ mta_signal_system_mail(nagios_t)
+ mta_kill_system_mail(nagios_t)
+ 
++tunable_policy(`nagios_run_sudo',`
++    allow nagios_t self:capability { setuid setgid sys_resource sys_ptrace };
++    allow nagios_t self:process { setrlimit setsched };
++
++    allow nagios_t self:key write;
++
++    allow nagios_t self:passwd { passwd rootok };
++
++    auth_rw_lastlog(nagios_t)
++    auth_rw_faillog(nagios_t)
++
++    auth_domtrans_chkpwd(nagios_t)
++
++    selinux_compute_access_vector(nagios_t)
++
++    logging_send_audit_msgs(nagios_t)
++')
++
++optional_policy(`
++    tunable_policy(`nagios_run_sudo',`
++        sudo_exec(nagios_t)
++        sudo_manage_db(nagios_t)
++    ')
++')
++
++tunable_policy(`nagios_run_pnp4nagios',`
++    allow nagios_t nagios_log_t:file execute;
++')
++
+ optional_policy(`
+ 	netutils_kill_ping(nagios_t)
+ ')
+@@ -272,6 +321,32 @@ logging_send_syslog_msg(nrpe_t)
+ 
+ userdom_dontaudit_use_unpriv_user_fds(nrpe_t)
+ 
++tunable_policy(`nagios_run_sudo',`
++    allow nrpe_t self:capability { setuid setgid sys_resource sys_ptrace };
++    allow nrpe_t self:process { setrlimit setsched };
++
++    allow nrpe_t self:key write;
++
++    allow nrpe_t self:passwd { passwd rootok };
++
++    auth_rw_lastlog(nrpe_t)
++    auth_rw_faillog(nrpe_t)
++
++    auth_domtrans_chkpwd(nrpe_t)
++
++    selinux_compute_access_vector(nrpe_t)
++
++    logging_send_audit_msgs(nrpe_t)
++')
++
++optional_policy(`
++    tunable_policy(`nagios_run_sudo',`
++        sudo_exec(nrpe_t)
++        sudo_manage_db(nrpe_t)
++    ')
++')
++
++
+ optional_policy(`
+ 	inetd_tcp_service_domain(nrpe_t, nrpe_exec_t)
+ ')
+@@ -434,6 +509,7 @@ kernel_read_kernel_sysctls(nagios_system_plugin_t)
+ 
+ corecmd_exec_bin(nagios_system_plugin_t)
+ corecmd_exec_shell(nagios_system_plugin_t)
++corecmd_getattr_all_executables(nagios_system_plugin_t)
+ 
+ dev_read_sysfs(nagios_system_plugin_t)
+ 
+diff --git a/passenger.te b/passenger.te
+index 231f2e2..56fba2e 100644
+--- a/passenger.te
++++ b/passenger.te
+@@ -32,7 +32,7 @@ allow passenger_t self:capability { chown dac_override fsetid fowner kill setuid
+ allow passenger_t self:capability2 block_suspend;
+ allow passenger_t self:process { setpgid setsched getsession signal_perms };
+ allow passenger_t self:fifo_file rw_fifo_file_perms;
+-allow passenger_t self:tcp_socket listen;
++allow passenger_t self:tcp_socket { accept listen };
+ allow passenger_t self:unix_stream_socket { create_stream_socket_perms connectto };
+ 
+ can_exec(passenger_t, passenger_exec_t)
+diff --git a/rhcs.if b/rhcs.if
+index bf60580..29df561 100644
+--- a/rhcs.if
++++ b/rhcs.if
+@@ -864,6 +864,29 @@ interface(`rhcs_systemctl_cluster',`
+     ps_process_pattern($1, cluster_t)
+ ')
+ 
++########################################
++## <summary>
++##	Send and receive messages from
++##	a cluster service over dbus.
++## </summary>
++## <param name="domain">
++##	<summary>
++##	Domain allowed access.
++##	</summary>
++## </param>
++#
++interface(`rhcs_dbus_chat_cluster',`
++	gen_require(`
++		type cluster_t;
++		class dbus send_msg;
++	')
++
++	allow $1 cluster_t:dbus send_msg;
++	allow cluster_t $1:dbus send_msg;
++')
++
++
++
+ #####################################
+ ## <summary>
+ ##  All of the rules required to administrate
 diff --git a/rhcs.te b/rhcs.te
 index 25c0f70..0706417 100644
 --- a/rhcs.te
@@ -97,6 +678,109 @@ index 25c0f70..0706417 100644
  userdom_delete_user_tmp_files(cluster_t)
  userdom_rw_user_tmp_files(cluster_t)
  userdom_kill_all_users(cluster_t)
+diff --git a/samba.te b/samba.te
+index 13c975b..6fca3c8 100644
+--- a/samba.te
++++ b/samba.te
+@@ -80,6 +80,13 @@ gen_tunable(samba_share_nfs, false)
+ ## </desc>
+ gen_tunable(samba_share_fusefs, false)
+ 
++## <desc>
++## <p>
++## Allow smbd to load libgfapi from gluster.
++## </p>
++## </desc>
++gen_tunable(samba_load_libgfapi, false)
++
+ type nmbd_t;
+ type nmbd_exec_t;
+ init_daemon_domain(nmbd_t, nmbd_exec_t)
+@@ -237,6 +244,13 @@ userdom_use_inherited_user_terminals(samba_net_t)
+ userdom_list_user_home_dirs(samba_net_t)
+ 
+ optional_policy(`
++	ctdbd_stream_connect(samba_net_t)
++    ctdbd_manage_var_files(samba_net_t)
++    ctdbd_manage_lib_dirs(samba_net_t)
++    ctdbd_manage_lib_files(samba_net_t)
++')
++
++optional_policy(`
+     ldap_stream_connect(samba_net_t)
+     dirsrv_stream_connect(samba_net_t)
+ ')
+@@ -338,6 +352,7 @@ allow smbd_t winbind_t:process { signal signull };
+ kernel_getattr_core_if(smbd_t)
+ kernel_getattr_message_if(smbd_t)
+ kernel_read_network_state(smbd_t)
++kernel_read_net_sysctls(smbd_t)
+ kernel_read_fs_sysctls(smbd_t)
+ kernel_read_kernel_sysctls(smbd_t)
+ kernel_read_usermodehelper_state(smbd_t)
+@@ -463,14 +478,21 @@ tunable_policy(`samba_share_fusefs',`
+ 	fs_search_fusefs(smbd_t)
+ ')
+ 
++tunable_policy(`samba_load_libgfapi',`
++    corenet_tcp_connect_all_ports(smbd_t)
++    corenet_tcp_bind_all_ports(smbd_t)
++    corenet_sendrecv_all_packets(smbd_t)
++')
++
+ optional_policy(`
+ 	ccs_read_config(smbd_t)
+ ')
+ 
+ optional_policy(`
+ 	ctdbd_stream_connect(smbd_t)
+-	ctdbd_manage_lib_files(smbd_t)
+     ctdbd_manage_var_files(smbd_t)
++	ctdbd_manage_lib_files(smbd_t)
++    ctdbd_manage_lib_dirs(smbd_t)
+ ')
+ 
+ optional_policy(`
+@@ -488,6 +510,11 @@ optional_policy(`
+ ')
+ 
+ optional_policy(`
++    glusterd_read_conf(smbd_t)
++    glusterd_rw_lib(smbd_t)
++')
++
++optional_policy(`
+ 	kerberos_read_keytab(smbd_t)
+ 	kerberos_use(smbd_t)
+ ')
+@@ -643,6 +670,7 @@ userdom_dontaudit_search_user_home_dirs(nmbd_t)
+ optional_policy(`
+ 	ctdbd_stream_connect(nmbd_t)
+     ctdbd_manage_var_files(nmbd_t)
++    ctdbd_manage_lib_dirs(nmbd_t)
+     ctdbd_manage_lib_files(nmbd_t)
+ ')
+ 
+@@ -900,7 +928,7 @@ allow winbind_t self:capability2 block_suspend;
+ dontaudit winbind_t self:capability sys_tty_config;
+ allow winbind_t self:process { signal_perms getsched setsched };
+ allow winbind_t self:fifo_file rw_fifo_file_perms;
+-allow winbind_t self:unix_dgram_socket create_socket_perms;
++allow winbind_t self:unix_dgram_socket { create_socket_perms sendto };
+ allow winbind_t self:unix_stream_socket create_stream_socket_perms;
+ allow winbind_t self:tcp_socket create_stream_socket_perms;
+ allow winbind_t self:udp_socket create_socket_perms;
+@@ -1001,8 +1029,9 @@ userdom_filetrans_home_content(winbind_t)
+ 
+ optional_policy(`
+ 	ctdbd_stream_connect(winbind_t)
++    ctdbd_manage_var_files(winbind_t)
+ 	ctdbd_manage_lib_files(winbind_t)
+-	ctdbd_manage_var_files(winbind_t)
++	ctdbd_manage_lib_dirs(winbind_t)
+ ')
+ 
+ 
 diff --git a/virt.if b/virt.if
 index 01641f5..90e8a28 100644
 --- a/virt.if

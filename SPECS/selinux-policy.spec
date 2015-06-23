@@ -19,7 +19,7 @@
 Summary: SELinux policy configuration
 Name: selinux-policy
 Version: 3.13.1
-Release: 23%{?dist}.7
+Release: 23%{?dist}.8
 License: GPLv2+
 Group: System Environment/Base
 Source: serefpolicy-%{version}.tgz
@@ -608,6 +608,19 @@ SELinux Reference policy mls base module.
 %endif
 
 %changelog
+* Mon Jun 15 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_7.8
+- Back port passenger fixes from RHEL-7.2
+- Back port httpd fixes related to gluster+nagios.
+- Back port glusterd changs from RHEL-7.2 related to Gluster.
+- Back port ctdbd changs from RHEL-7.2 related to Gluster.
+- Back port nagios changs from RHEL-7.2 related to Gluster.
+- Back port samba changs from RHEL-7.2 related to Gluster.
+Resolves:#1230292
+Resolves:#1230299
+Resolves:#1231649
+Resolves:#1231930
+Resolves:#1231942
+
 * Wed Apr 29 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_7.7
 - Label /usr/libexec/postgresql-ctl as postgresql_exec_t
 - Update virt_read_pid_files() interface to allow read also symlinks with virt_var_run_t type.
