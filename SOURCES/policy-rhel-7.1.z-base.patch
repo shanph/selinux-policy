@@ -39,7 +39,7 @@ index aa51ab2..2e75ec7 100644
 +    manage_files_pattern($1, sudo_db_t, sudo_db_t)
 +')
 diff --git a/policy/modules/kernel/corecommands.fc b/policy/modules/kernel/corecommands.fc
-index 9a8ff3e..0960389 100644
+index 9a8ff3e..423b99a 100644
 --- a/policy/modules/kernel/corecommands.fc
 +++ b/policy/modules/kernel/corecommands.fc
 @@ -61,6 +61,8 @@ ifdef(`distro_redhat',`
@@ -51,15 +51,117 @@ index 9a8ff3e..0960389 100644
  /etc/dhcp/dhclient\.d(/.*)?		gen_context(system_u:object_r:bin_t,s0)
  
  /etc/hotplug/.*agent		--	gen_context(system_u:object_r:bin_t,s0)
-@@ -482,6 +484,8 @@ ifdef(`distro_suse', `
+@@ -482,6 +484,9 @@ ifdef(`distro_suse', `
  /var/qmail/bin(/.*)?			gen_context(system_u:object_r:bin_t,s0)
  /var/qmail/rc			--	gen_context(system_u:object_r:bin_t,s0)
  
 +/var/lib/glusterd/hooks/.*/.*\.sh -- gen_context(system_u:object_r:bin_t,s0)
++/var/lib/glusterd/hooks/.*/.*\.py -- gen_context(system_u:object_r:bin_t,s0)
 +
  ifdef(`distro_suse',`
  /var/lib/samba/bin/.+			gen_context(system_u:object_r:bin_t,s0)
  ')
+diff --git a/policy/modules/kernel/filesystem.if b/policy/modules/kernel/filesystem.if
+index 75c7b9d..6842334 100644
+--- a/policy/modules/kernel/filesystem.if
++++ b/policy/modules/kernel/filesystem.if
+@@ -1685,6 +1685,25 @@ interface(`fs_cifs_entry_type',`
+ 	domain_entry_file($1, cifs_t)
+ ')
+ 
++########################################
++## <summary>
++##	Make general progams in CIFS an entrypoint for
++##	the specified domain.
++## </summary>
++## <param name="domain">
++##	<summary>
++##	The domain for which cifs_t is an entrypoint.
++##	</summary>
++## </param>
++#
++interface(`fs_cifs_entrypoint',`
++	gen_require(`
++		type cifs_t;
++	')
++
++    allow $1 cifs_t:file entrypoint;
++')
++
+ #######################################
+ ## <summary>
+ ##	Create, read, write, and delete dirs
+@@ -2326,6 +2345,44 @@ interface(`fs_exec_fusefs_files',`
+ 
+ ########################################
+ ## <summary>
++##	Make general progams in FUSEFS an entrypoint for
++##	the specified domain.
++## </summary>
++## <param name="domain">
++##	<summary>
++##	The domain for which fusefs_t is an entrypoint.
++##	</summary>
++## </param>
++#
++interface(`fs_fusefs_entry_type',`
++	gen_require(`
++		type fusefs_t;
++	')
++
++	domain_entry_file($1, fusefs_t)
++')
++
++########################################
++## <summary>
++##	Make general progams in FUSEFS an entrypoint for
++##	the specified domain.
++## </summary>
++## <param name="domain">
++##	<summary>
++##	The domain for which fusefs_t is an entrypoint.
++##	</summary>
++## </param>
++#
++interface(`fs_fusefs_entrypoint',`
++	gen_require(`
++		type fusefs_t;
++	')
++
++    allow $1 fusefs_t:file entrypoint;
++')
++
++########################################
++## <summary>
+ ##	Create, read, write, and delete files
+ ##	on a FUSEFS filesystem.
+ ## </summary>
+@@ -3049,6 +3106,25 @@ interface(`fs_nfs_entry_type',`
+ 
+ ########################################
+ ## <summary>
++##	Make general progams in NFS an entrypoint for
++##	the specified domain.
++## </summary>
++## <param name="domain">
++##	<summary>
++##	The domain for which nfs_t is an entrypoint.
++##	</summary>
++## </param>
++#
++interface(`fs_nfs_entrypoint',`
++	gen_require(`
++		type nfs_t;
++	')
++
++    allow $1 nfs_t:file entrypoint;
++')
++
++########################################
++## <summary>
+ ##	Append files
+ ##	on a NFS filesystem.
+ ## </summary>
 diff --git a/policy/modules/services/postgresql.fc b/policy/modules/services/postgresql.fc
 index 947af6c..59fe535 100644
 --- a/policy/modules/services/postgresql.fc
@@ -74,7 +176,7 @@ index 947af6c..59fe535 100644
  /usr/lib/pgsql/test/regress/pg_regress -- gen_context(system_u:object_r:postgresql_exec_t,s0)
  /usr/lib/postgresql/bin/.*	--	gen_context(system_u:object_r:postgresql_exec_t,s0)
 diff --git a/policy/modules/services/ssh.te b/policy/modules/services/ssh.te
-index 2ef9dc6..cc76bdc 100644
+index 2ef9dc6..7e306f4 100644
 --- a/policy/modules/services/ssh.te
 +++ b/policy/modules/services/ssh.te
 @@ -56,6 +56,7 @@ ssh_server_template(sshd)
@@ -85,6 +187,17 @@ index 2ef9dc6..cc76bdc 100644
  
  type sshd_initrc_exec_t;
  init_script_file(sshd_initrc_exec_t)
+@@ -512,6 +513,10 @@ userdom_dontaudit_use_unpriv_user_fds(ssh_keygen_t)
+ userdom_use_user_terminals(ssh_keygen_t)
+ 
+ optional_policy(`
++    glusterd_manage_lib_files(ssh_keygen_t)
++')
++
++optional_policy(`
+ 	seutil_sigchld_newrole(ssh_keygen_t)
+ ')
+ 
 diff --git a/policy/modules/system/init.if b/policy/modules/system/init.if
 index b88e8a2..b13579d 100644
 --- a/policy/modules/system/init.if
@@ -125,6 +238,53 @@ index 12c7fa6..0cd667e 100644
 +
 +	dontaudit $1 ipsec_log_t:file rw_inherited_file_perms;
 +')
+diff --git a/policy/modules/system/iptables.te b/policy/modules/system/iptables.te
+index f0ed532..4080213 100644
+--- a/policy/modules/system/iptables.te
++++ b/policy/modules/system/iptables.te
+@@ -139,6 +139,10 @@ optional_policy(`
+ ')
+ 
+ optional_policy(`
++	ctdbd_read_lib_files(iptables_t)
++')
++
++optional_policy(`
+     neutron_rw_inherited_pipes(iptables_t)
+     neutron_sigchld(iptables_t)
+ ')
+diff --git a/policy/modules/system/logging.te b/policy/modules/system/logging.te
+index 077c808..a9691cb 100644
+--- a/policy/modules/system/logging.te
++++ b/policy/modules/system/logging.te
+@@ -20,6 +20,14 @@ gen_tunable(logging_syslogd_can_sendmail, false)
+ ## </desc>
+ gen_tunable(logging_syslogd_use_tty, true)
+ 
++## <desc>
++## <p>
++## Allow syslogd the ability to call nagios plugins. It is
++## turned on by omprog rsyslog plugin.
++## </p>
++## </desc>
++gen_tunable(logging_syslogd_run_nagios_plugins, false)
++
+ attribute logfile;
+ 
+ type auditctl_t;
+@@ -505,6 +513,12 @@ tunable_policy(`logging_syslogd_can_sendmail',`
+ 	corenet_tcp_connect_smtp_port(syslogd_t)
+ ')
+ 
++optional_policy(`
++    tunable_policy(`logging_syslogd_run_nagios_plugins',`
++        nagios_domtrans_unconfined_plugins(syslogd_t)
++    ')
++')
++
+ dev_filetrans(syslogd_t, devlog_t, sock_file)
+ dev_read_sysfs(syslogd_t)
+ dev_read_rand(syslogd_t)
 diff --git a/policy/modules/system/sysnetwork.te b/policy/modules/system/sysnetwork.te
 index ca1b2bc..b3417f5 100644
 --- a/policy/modules/system/sysnetwork.te

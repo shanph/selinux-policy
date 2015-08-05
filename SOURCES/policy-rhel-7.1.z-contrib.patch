@@ -10,6 +10,38 @@ index 3226dec..e9c7099 100644
  	nagios_read_log(httpd_t)
  ')
  
+diff --git a/cron.te b/cron.te
+index 0ee059a..9d2cd2d 100644
+--- a/cron.te
++++ b/cron.te
+@@ -27,6 +27,14 @@ gen_tunable(cron_can_relabel, false)
+ gen_tunable(cron_userdomain_transition, true)
+ 
+ ## <desc>
++##  <p>
++##  Allow system cronjob to be executed on
++##  on NFS, CIFS or FUSE filesystem.
++##  </p>
++## </desc>
++gen_tunable(cron_system_cronjob_use_shares, false)
++
++## <desc>
+ ##	<p>
+ ##	Enable extra rules in the cron domain
+ ##	to support fcron.
+@@ -404,6 +412,12 @@ manage_files_pattern(system_cronjob_t, system_cron_spool_t, system_cron_spool_t)
+ # for this purpose.
+ allow system_cronjob_t system_cron_spool_t:file entrypoint;
+ 
++tunable_policy(`cron_system_cronjob_use_shares',`
++    fs_fusefs_entrypoint(system_cronjob_t)
++    fs_nfs_entrypoint(system_cronjob_t)
++    fs_cifs_entrypoint(system_cronjob_t)
++')
++
+ # Permit a transition from the crond_t domain to this domain.
+ # The transition is requested explicitly by the modified crond 
+ # via setexeccon.  There is no way to set up an automatic
 diff --git a/ctdb.if b/ctdb.if
 index e99c5c6..ffc5497 100644
 --- a/ctdb.if
@@ -132,7 +164,7 @@ index e99c5c6..ffc5497 100644
  
  ########################################
 diff --git a/ctdb.te b/ctdb.te
-index 2ab29db..61a9e2d 100644
+index 2ab29db..4a84c8b 100644
 --- a/ctdb.te
 +++ b/ctdb.te
 @@ -44,6 +44,7 @@ allow ctdbd_t self:netlink_route_socket r_netlink_socket_perms;
@@ -169,14 +201,34 @@ index 2ab29db..61a9e2d 100644
  optional_policy(`
  	consoletype_exec(ctdbd_t)
  ')
+@@ -123,6 +129,7 @@ optional_policy(`
+ ')
+ 
+ optional_policy(`
++    samba_signull_smbd(ctdbd_t)
+ 	samba_initrc_domtrans(ctdbd_t)
+ 	samba_domtrans_net(ctdbd_t)
+ 	samba_rw_var_files(ctdbd_t)
+@@ -130,5 +137,10 @@ optional_policy(`
+ ')
+ 
+ optional_policy(`
++    samba_signull_winbind(ctdbd_t)
++    samba_signull_unconfined_net(ctdbd_t)
++')
++
++optional_policy(`
+ 	sysnet_domtrans_ifconfig(ctdbd_t)
+ ')
 diff --git a/glusterd.if b/glusterd.if
-index c62ad86..5e3410a 100644
+index c62ad86..fc9bf19 100644
 --- a/glusterd.if
 +++ b/glusterd.if
-@@ -117,6 +117,64 @@ interface(`glusterd_manage_log',`
+@@ -117,7 +117,84 @@ interface(`glusterd_manage_log',`
  	manage_lnk_files_pattern($1, glusterd_log_t, glusterd_log_t)
  ')
  
+-########################################
 +######################################
 +## <summary>
 +##  Allow the specified domain to execute gluster's lib files.
@@ -235,11 +287,31 @@ index c62ad86..5e3410a 100644
 +    rw_files_pattern($1, glusterd_var_lib_t, glusterd_var_lib_t)
 +')
 +
- ########################################
++######################################
++## <summary>
++## Read and write /var/lib/glusterd files.
++## </summary>
++## <param name="domain">
++##     <summary>
++##     Domain allowed access.
++##     </summary>
++## </param>
++#
++interface(`glusterd_manage_lib_files',`
++       gen_require(`
++               type glusterd_var_lib_t;
++       ')
++
++    files_search_var_lib($1)
++    manage_files_pattern($1, glusterd_var_lib_t, glusterd_var_lib_t)
++')
++
++######################################
  ## <summary>
  ##	All of the rules required to administrate
+ ##	an glusterd environment
 diff --git a/glusterd.te b/glusterd.te
-index fbc6a67..21a8c3d 100644
+index fbc6a67..b974353 100644
 --- a/glusterd.te
 +++ b/glusterd.te
 @@ -31,6 +31,7 @@ gen_tunable(gluster_export_all_rw, true)
@@ -291,17 +363,29 @@ index fbc6a67..21a8c3d 100644
  
  corenet_tcp_connect_gluster_port(glusterd_t)
  corenet_tcp_bind_gluster_port(glusterd_t)
-@@ -144,6 +153,7 @@ corenet_tcp_connect_ssh_port(glusterd_t)
+@@ -141,11 +150,15 @@ corenet_tcp_bind_all_unreserved_ports(glusterd_t)
+ corenet_tcp_connect_all_unreserved_ports(glusterd_t)
+ corenet_tcp_connect_all_ephemeral_ports(glusterd_t)
+ corenet_tcp_connect_ssh_port(glusterd_t)
++corenet_tcp_connect_all_rpc_ports(glusterd_t)
++corenet_tcp_connect_all_ports(glusterd_t)
  
  dev_read_sysfs(glusterd_t)
  dev_read_urand(glusterd_t)
 +dev_read_rand(glusterd_t)
  
  domain_read_all_domains_state(glusterd_t)
++domain_getattr_all_sockets(glusterd_t)
  
-@@ -156,11 +166,23 @@ fs_getattr_all_fs(glusterd_t)
+ domain_use_interactive_fds(glusterd_t)
+ 
+@@ -155,13 +168,30 @@ fs_getattr_all_fs(glusterd_t)
+ 
  files_mounton_non_security(glusterd_t)
  
++files_dontaudit_read_security_files(glusterd_t)
++files_dontaudit_list_security_dirs(glusterd_t)
++
  storage_rw_fuse(glusterd_t)
 +#needed by /usr/sbin/xfs_db
 +storage_raw_read_fixed_disk(glusterd_t)
@@ -321,10 +405,19 @@ index fbc6a67..21a8c3d 100644
 +systemd_signal_passwd_agent(glusterd_t)
 +
  logging_send_syslog_msg(glusterd_t)
++logging_dontaudit_search_audit_logs(glusterd_t)
++
  libs_exec_ldconfig(glusterd_t)
  
-@@ -171,6 +193,9 @@ userdom_manage_user_home_dirs(glusterd_t)
+ miscfiles_read_localization(glusterd_t)
+@@ -169,8 +199,15 @@ miscfiles_read_public_files(glusterd_t)
+ 
+ userdom_manage_user_home_dirs(glusterd_t)
  userdom_filetrans_home_content(glusterd_t)
++userdom_read_user_tmp_files(glusterd_t)
++userdom_delete_user_tmp_files(glusterd_t)
++userdom_rw_user_tmp_files(glusterd_t)
++userdom_kill_all_users(glusterd_t)
  
  mount_domtrans(glusterd_t)
 +
@@ -333,10 +426,24 @@ index fbc6a67..21a8c3d 100644
  tunable_policy(`gluster_anon_write',`
  	miscfiles_manage_public_files(glusterd_t)
  ') 
-@@ -188,6 +213,39 @@ tunable_policy(`gluster_export_all_rw',`
+@@ -178,6 +215,8 @@ tunable_policy(`gluster_anon_write',`
+ tunable_policy(`gluster_export_all_ro',`
+ 	fs_read_noxattr_fs_files(glusterd_t) 
+ 	files_read_non_security_files(glusterd_t) 
++    files_getattr_all_pipes(glusterd_t)
++    files_getattr_all_sockets(glusterd_t)
  ')
  
- optional_policy(`
+ tunable_policy(`gluster_export_all_rw',`
+@@ -185,6 +224,45 @@ tunable_policy(`gluster_export_all_rw',`
+ 	files_manage_non_security_dirs(glusterd_t)
+ 	files_manage_non_security_files(glusterd_t)
+     files_relabel_base_file_types(glusterd_t)
++    files_getattr_all_pipes(glusterd_t)
++    files_getattr_all_sockets(glusterd_t)
++')
++
++optional_policy(`
 +    ctdbd_domtrans(glusterd_t)
 +    ctdbd_signal(glusterd_t)
 +')
@@ -359,6 +466,10 @@ index fbc6a67..21a8c3d 100644
 +')
 +
 +optional_policy(`
++    mount_domtrans_showmount(glusterd_t)
++')
++
++optional_policy(`
 +    samba_domtrans_smbd(glusterd_t)
 +    samba_systemctl(glusterd_t)
 +    samba_signal_smbd(glusterd_t)
@@ -367,19 +478,26 @@ index fbc6a67..21a8c3d 100644
 +
 +optional_policy(`
 +    ssh_exec_keygen(glusterd_t)
-+')
-+
-+optional_policy(`
-     rpc_domtrans_rpcd(glusterd_t)
-     rpc_kill_rpcd(glusterd_t)
- ')
-@@ -197,5 +255,11 @@ optional_policy(`
  ')
  
  optional_policy(`
+@@ -197,5 +275,21 @@ optional_policy(`
+ ')
+ 
+ optional_policy(`
++    rpc_systemctl_nfsd(glusterd_t)
++    rpc_systemctl_rpcd(glusterd_t)
++
++    rpc_domtrans_nfsd(glusterd_t)
++    rpc_domtrans_rpcd(glusterd_t)
++    rpc_manage_nfs_state_data(glusterd_t)
++')
++
++optional_policy(`
 +    rhcs_dbus_chat_cluster(glusterd_t)
 +    rhcs_domtrans_cluster(glusterd_t)
 +    rhcs_systemctl_cluster(glusterd_t)
++    rhcs_stream_connect_cluster(glusterd_t)
 +')
 +
 +optional_policy(`
@@ -472,10 +590,37 @@ index e14423d..976d57e 100644
  logging_send_syslog_msg(mysqld_t)
  
 diff --git a/nagios.if b/nagios.if
-index cad402c..ed3394e 100644
+index cad402c..438eeb3 100644
 --- a/nagios.if
 +++ b/nagios.if
-@@ -72,6 +72,25 @@ interface(`nagios_read_config',`
+@@ -34,6 +34,26 @@ template(`nagios_plugin_template',`
+ 
+ ########################################
+ ## <summary>
++## Execute the nagios unconfined plugins with
++## a domain transition.
++## </summary>
++## <param name="domain">
++## <summary>
++## Domain allowed access.
++## </summary>
++## </param>
++#
++interface(`nagios_domtrans_unconfined_plugins',`
++   gen_require(`
++        type nagios_unconfined_plugin_t;
++        type nagios_unconfined_plugin_exec_t;
++   ')
++
++    domtrans_pattern($1, nagios_unconfined_plugin_exec_t, nagios_unconfined_plugin_t)
++')
++
++########################################
++## <summary>
+ ##	Do not audit attempts to read or write nagios
+ ##	unnamed pipes.
+ ## </summary>
+@@ -72,6 +92,25 @@ interface(`nagios_read_config',`
  	allow $1 nagios_etc_t:file read_file_perms;
  	files_search_etc($1)
  ')
@@ -502,7 +647,7 @@ index cad402c..ed3394e 100644
  ######################################
  ## <summary>
 diff --git a/nagios.te b/nagios.te
-index 75ed416..40e93b4 100644
+index 75ed416..e4b8c8a 100644
 --- a/nagios.te
 +++ b/nagios.te
 @@ -5,6 +5,25 @@ policy_module(nagios, 1.13.0)
@@ -577,6 +722,15 @@ index 75ed416..40e93b4 100644
  optional_policy(`
  	netutils_kill_ping(nagios_t)
  ')
+@@ -222,7 +271,7 @@ optional_policy(`
+ # Nrpe local policy
+ #
+ 
+-allow nrpe_t self:capability { setuid setgid };
++allow nrpe_t self:capability { setuid setgid kill };
+ dontaudit nrpe_t self:capability { sys_tty_config sys_resource };
+ allow nrpe_t self:process { setpgid signal_perms setsched setrlimit };
+ allow nrpe_t self:fifo_file rw_fifo_file_perms;
 @@ -272,6 +321,32 @@ logging_send_syslog_msg(nrpe_t)
  
  userdom_dontaudit_use_unpriv_user_fds(nrpe_t)
@@ -678,8 +832,77 @@ index 25c0f70..0706417 100644
  userdom_delete_user_tmp_files(cluster_t)
  userdom_rw_user_tmp_files(cluster_t)
  userdom_kill_all_users(cluster_t)
+diff --git a/samba.if b/samba.if
+index 59296a2..7662d37 100644
+--- a/samba.if
++++ b/samba.if
+@@ -622,6 +622,23 @@ interface(`samba_signal_smbd',`
+ 	allow $1 smbd_t:process signal;
+ ')
+ 
++######################################
++## <summary>
++##	Allow domain to signull samba
++## </summary>
++## <param name="domain">
++##	<summary>
++##	Domain allowed access.
++##	</summary>
++## </param>
++#
++interface(`samba_signull_smbd',`
++	gen_require(`
++		type smbd_t;
++	')
++	allow $1 smbd_t:process signull;
++')
++
+ ########################################
+ ## <summary>
+ ##	Do not audit attempts to use file descriptors from samba.
+@@ -758,6 +775,40 @@ interface(`samba_read_winbind_pid',`
+ 	allow $1 winbind_var_run_t:file read_file_perms;
+ ')
+ 
++######################################
++## <summary>
++##	Allow domain to signull winbind
++## </summary>
++## <param name="domain">
++##	<summary>
++##	Domain allowed access.
++##	</summary>
++## </param>
++#
++interface(`samba_signull_winbind',`
++	gen_require(`
++		type winbind_t;
++	')
++	allow $1 winbind_t:process signull;
++')
++
++######################################
++## <summary>
++##	Allow domain to signull samba_unconfined_net
++## </summary>
++## <param name="domain">
++##	<summary>
++##	Domain allowed access.
++##	</summary>
++## </param>
++#
++interface(`samba_signull_unconfined_net',`
++	gen_require(`
++		type samba_unconfined_net_t;
++	')
++	allow $1 samba_unconfined_net_t:process signull;
++')
++
+ ########################################
+ ## <summary>
+ ##	Connect to winbind.
 diff --git a/samba.te b/samba.te
-index 13c975b..6fca3c8 100644
+index 13c975b..9249311 100644
 --- a/samba.te
 +++ b/samba.te
 @@ -80,6 +80,13 @@ gen_tunable(samba_share_nfs, false)
@@ -710,7 +933,18 @@ index 13c975b..6fca3c8 100644
      ldap_stream_connect(samba_net_t)
      dirsrv_stream_connect(samba_net_t)
  ')
-@@ -338,6 +352,7 @@ allow smbd_t winbind_t:process { signal signull };
+@@ -260,8 +274,9 @@ optional_policy(`
+ # smbd Local policy
+ #
+ 
+-allow smbd_t self:capability { chown fowner kill fsetid setgid setuid sys_chroot sys_nice sys_admin sys_resource lease dac_override dac_read_search };
++allow smbd_t self:capability { chown fowner kill fsetid setgid setuid sys_chroot sys_nice sys_admin sys_resource lease dac_override dac_read_search net_admin };
+ dontaudit smbd_t self:capability sys_tty_config;
++dontaudit smbd_t self:capability2 block_suspend;
+ allow smbd_t self:process ~{ ptrace setcurrent setexec setfscreate setrlimit execmem execstack execheap };
+ allow smbd_t self:process setrlimit;
+ allow smbd_t self:fd use;
+@@ -338,6 +353,7 @@ allow smbd_t winbind_t:process { signal signull };
  kernel_getattr_core_if(smbd_t)
  kernel_getattr_message_if(smbd_t)
  kernel_read_network_state(smbd_t)
@@ -718,7 +952,7 @@ index 13c975b..6fca3c8 100644
  kernel_read_fs_sysctls(smbd_t)
  kernel_read_kernel_sysctls(smbd_t)
  kernel_read_usermodehelper_state(smbd_t)
-@@ -463,14 +478,21 @@ tunable_policy(`samba_share_fusefs',`
+@@ -463,14 +479,21 @@ tunable_policy(`samba_share_fusefs',`
  	fs_search_fusefs(smbd_t)
  ')
  
@@ -741,7 +975,7 @@ index 13c975b..6fca3c8 100644
  ')
  
  optional_policy(`
-@@ -488,6 +510,11 @@ optional_policy(`
+@@ -488,6 +511,11 @@ optional_policy(`
  ')
  
  optional_policy(`
@@ -753,7 +987,7 @@ index 13c975b..6fca3c8 100644
  	kerberos_read_keytab(smbd_t)
  	kerberos_use(smbd_t)
  ')
-@@ -643,6 +670,7 @@ userdom_dontaudit_search_user_home_dirs(nmbd_t)
+@@ -643,6 +671,7 @@ userdom_dontaudit_search_user_home_dirs(nmbd_t)
  optional_policy(`
  	ctdbd_stream_connect(nmbd_t)
      ctdbd_manage_var_files(nmbd_t)
@@ -761,7 +995,7 @@ index 13c975b..6fca3c8 100644
      ctdbd_manage_lib_files(nmbd_t)
  ')
  
-@@ -900,7 +928,7 @@ allow winbind_t self:capability2 block_suspend;
+@@ -900,7 +929,7 @@ allow winbind_t self:capability2 block_suspend;
  dontaudit winbind_t self:capability sys_tty_config;
  allow winbind_t self:process { signal_perms getsched setsched };
  allow winbind_t self:fifo_file rw_fifo_file_perms;
@@ -770,7 +1004,7 @@ index 13c975b..6fca3c8 100644
  allow winbind_t self:unix_stream_socket create_stream_socket_perms;
  allow winbind_t self:tcp_socket create_stream_socket_perms;
  allow winbind_t self:udp_socket create_socket_perms;
-@@ -1001,8 +1029,9 @@ userdom_filetrans_home_content(winbind_t)
+@@ -1001,8 +1030,9 @@ userdom_filetrans_home_content(winbind_t)
  
  optional_policy(`
  	ctdbd_stream_connect(winbind_t)

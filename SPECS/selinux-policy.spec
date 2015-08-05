@@ -19,7 +19,7 @@
 Summary: SELinux policy configuration
 Name: selinux-policy
 Version: 3.13.1
-Release: 23%{?dist}.8
+Release: 23%{?dist}.13
 License: GPLv2+
 Group: System Environment/Base
 Source: serefpolicy-%{version}.tgz
@@ -608,7 +608,42 @@ SELinux Reference policy mls base module.
 %endif
 
 %changelog
-* Mon Jun 15 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_7.8
+* Tue Jul 28 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_1.13
+- glusterd call pcs utility which calls find for cib.* files and runs pstree under glusterd. Dontaudit access to security files and update gluster boolean to reflect these changes.
+-  Allow glusterd to communicate with cluster domains over stream socket.
+Resolves:#1238963
+
+* Tue Jul 21 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_1.12
+- Allow iptables to read ctdbd lib files.
+Resolves:#1238965
+
+* Mon Jul 20 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_1.11
+- Allow glusterd to manage nfsd and rpcd services.
+- Allow samba_t net_admin capability to make CIFS mount working.
+Resolves:#1238965
+- Dontaudit smbd_t block_suspend capability.
+
+* Fri Jul 17 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_1.10
+- Allow gluster to connect to all ports. It is required by random services executed by gluster.
+- Allow glusterd to execute showmount in the showmount domain.
+- Add samba_signull_unconfined_net()
+- Add samba_signull_winbind()
+Resolves:#1232755
+- Add logging_syslogd_run_nagios_plugins boolean for rsyslog to allow transition to nagios unconfined plugins.
+Resolves:#1238963
+- Label gluster python hooks also as bin_t.
+Resolves:#1238965
+- We allow can_exec() on ssh_keygen on gluster. But there is a transition defined by init_initrc_domain() because we need to allow execute unconfined services by glusterd. So ssh-keygen ends up with ssh_keygen_t and we need to allow to manage /var/lib/glusterd/geo-replication/secret.pem.
+
+* Tue Jul 7 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_1.9
+- S30samba-start gluster hooks wants to search audit logs. Dontaudit it.
+- Allow glusterd to interact with gluster tools running in a user domain
+- nrpe needs kill capability to make gluster moniterd nodes working.
+Resolves:#1238964
+- Add cron_system_cronjob_use_shares boolean to allow system cronjob to be executed from shares - NFS, CIFS, FUSE. It requires "entrypoint" permissios on nfs_t, cifs_t and fusefs_t SELinux types.
+- Allow ctdb_t sending signull to smbd_t, for checking if smbd process exists.
+
+* Mon Jun 15 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_1.8
 - Back port passenger fixes from RHEL-7.2
 - Back port httpd fixes related to gluster+nagios.
 - Back port glusterd changs from RHEL-7.2 related to Gluster.
@@ -621,7 +656,7 @@ Resolves:#1231649
 Resolves:#1231930
 Resolves:#1231942
 
-* Wed Apr 29 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_7.7
+* Wed Apr 29 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_1.7
 - Label /usr/libexec/postgresql-ctl as postgresql_exec_t
 - Update virt_read_pid_files() interface to allow read also symlinks with virt_var_run_t type.
 - Add labeling for /usr/libexec/mysqld_safe-scl-helper.
@@ -634,29 +669,29 @@ Resolves:#1214235
 - Add support for mongod/mongos systemd unit files.
 Resolves:#1214194
 
-* Tue Apr 21 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_7.6
+* Tue Apr 21 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_1.6
 - Make mongodb_t as nsswitch domain
 - ALlow mongod execmem by default
 Resolves:#1212970
 
-* Wed Apr 8 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_7.5
+* Wed Apr 8 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_1.5
 - Update policy/mls for sockets related to accept.
 Resolves:#1207549
 
-* Tue Mar 31 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_7.4
+* Tue Mar 31 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_1.4
 - Update policy/mls for sockets. Rules were contradictory.
 Resolves:#1207549
 
-* Wed Mar 25 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_7.3
+* Wed Mar 25 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_1.3
 - Dontaudit ifconfig writing inhertited /var/log/pluto.log.
 Resolves:#1205580
 - Update init_rw_tcp_sockets() interface to use getopt and setopt.
 
-* Mon Mar 23 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_7.2
+* Mon Mar 23 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_1.2
 - Use enable_mls instead of enabled_mls in userdomain.if
 Resolves:#1204778
 
-* Mon Mar 23 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_7.1
+* Mon Mar 23 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_1.1
 - Allow a user to login with different security level via ssh.
 Resolves:#1204778
 
