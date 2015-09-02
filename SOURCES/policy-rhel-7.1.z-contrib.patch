@@ -10,6 +10,28 @@ index 3226dec..e9c7099 100644
  	nagios_read_log(httpd_t)
  ')
  
+diff --git a/chrome.te b/chrome.te
+index f50b201..5c852ff 100644
+--- a/chrome.te
++++ b/chrome.te
+@@ -35,7 +35,7 @@ allow chrome_sandbox_t self:capability2 block_suspend;
+ allow chrome_sandbox_t self:capability { chown dac_override fsetid setgid setuid sys_admin sys_chroot sys_ptrace };
+ dontaudit chrome_sandbox_t self:capability sys_nice;
+ allow chrome_sandbox_t self:process { signal_perms setrlimit execmem execstack };
+-allow chrome_sandbox_t self:process setsched;
++allow chrome_sandbox_t self:process { setcap setsched };
+ allow chrome_sandbox_t self:fifo_file manage_fifo_file_perms;
+ allow chrome_sandbox_t self:unix_stream_socket create_stream_socket_perms;
+ allow chrome_sandbox_t self:unix_dgram_socket { create_socket_perms sendto };
+@@ -60,6 +60,8 @@ fs_tmpfs_filetrans(chrome_sandbox_t, chrome_sandbox_tmpfs_t, { file dir })
+ kernel_read_system_state(chrome_sandbox_t)
+ kernel_read_kernel_sysctls(chrome_sandbox_t)
+ 
++auth_dontaudit_read_passwd(chrome_sandbox_t)
++
+ fs_manage_cgroup_dirs(chrome_sandbox_t)
+ fs_manage_cgroup_files(chrome_sandbox_t)
+ fs_read_dos_files(chrome_sandbox_t)
 diff --git a/cron.te b/cron.te
 index 0ee059a..9d2cd2d 100644
 --- a/cron.te

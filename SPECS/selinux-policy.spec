@@ -19,7 +19,7 @@
 Summary: SELinux policy configuration
 Name: selinux-policy
 Version: 3.13.1
-Release: 23%{?dist}.13
+Release: 23%{?dist}.17
 License: GPLv2+
 Group: System Environment/Base
 Source: serefpolicy-%{version}.tgz
@@ -608,6 +608,22 @@ SELinux Reference policy mls base module.
 %endif
 
 %changelog
+* Wed Aug 28 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_1.17
+- Dontaudit chrome to read passwd file.
+Resolves:#1257816
+
+* Wed Aug 26 2015 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-23.el7_1.16
+- Revert Allow qpidd access to /proc/<pid>/net/psched
+Resolves: #1254318
+
+* Wed Aug 19 2015 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-23.el7_1.15
+-Allow qpidd access to /proc/<pid>/net/psched
+Resolves: #1254318
+
+* Tue Aug 18 2015 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-23.el7_1.14
+- Allow chrome setcap to itself.
+Resolves: #1254565
+
 * Tue Jul 28 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_1.13
 - glusterd call pcs utility which calls find for cib.* files and runs pstree under glusterd. Dontaudit access to security files and update gluster boolean to reflect these changes.
 -  Allow glusterd to communicate with cluster domains over stream socket.
