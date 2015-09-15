@@ -19,7 +19,7 @@
 Summary: SELinux policy configuration
 Name: selinux-policy
 Version: 3.13.1
-Release: 23%{?dist}.17
+Release: 23%{?dist}.18
 License: GPLv2+
 Group: System Environment/Base
 Source: serefpolicy-%{version}.tgz
@@ -608,6 +608,10 @@ SELinux Reference policy mls base module.
 %endif
 
 %changelog
+* Thu Sep 3 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_1.18
+- Allow qpidd access to /proc/<pid>/net/psched
+Resolves: #1254318
+
 * Wed Aug 28 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_1.17
 - Dontaudit chrome to read passwd file.
 Resolves:#1257816

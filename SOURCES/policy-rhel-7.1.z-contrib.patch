@@ -807,6 +807,18 @@ index 231f2e2..56fba2e 100644
  allow passenger_t self:unix_stream_socket { create_stream_socket_perms connectto };
  
  can_exec(passenger_t, passenger_exec_t)
+diff --git a/qpid.te b/qpid.te
+index fc17eee..9f4739c 100644
+--- a/qpid.te
++++ b/qpid.te
+@@ -53,6 +53,7 @@ manage_files_pattern(qpidd_t, qpidd_var_run_t,  qpidd_var_run_t)
+ files_pid_filetrans(qpidd_t, qpidd_var_run_t, { file dir })
+ 
+ kernel_read_system_state(qpidd_t)
++kernel_read_network_state(qpidd_t)
+ 
+ auth_read_passwd(qpidd_t)
+ 
 diff --git a/rhcs.if b/rhcs.if
 index bf60580..29df561 100644
 --- a/rhcs.if
