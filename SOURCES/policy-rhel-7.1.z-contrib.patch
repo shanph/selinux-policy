@@ -1,3 +1,39 @@
+diff --git a/apache.fc b/apache.fc
+index 3009a35..20edb22 100644
+--- a/apache.fc
++++ b/apache.fc
+@@ -19,6 +19,7 @@ HOME_DIR/((www)|(web)|(public_html))(/.*)?/logs(/.*)?	gen_context(system_u:objec
+ /etc/lighttpd(/.*)?			gen_context(system_u:object_r:httpd_config_t,s0)
+ /etc/mock/koji(/.*)? 			gen_context(system_u:object_r:httpd_sys_rw_content_t,s0)
+ /etc/nginx(/.*)?         gen_context(system_u:object_r:httpd_config_t,s0)
++/etc/opt/rh/rh-nginx18/nginx(/.*)?         gen_context(system_u:object_r:httpd_config_t,s0)
+ /etc/rc\.d/init\.d/httpd	--	gen_context(system_u:object_r:httpd_initrc_exec_t,s0)
+ /etc/rc\.d/init\.d/lighttpd	--	gen_context(system_u:object_r:httpd_initrc_exec_t,s0)
+ 
+@@ -121,6 +122,7 @@ ifdef(`distro_suse', `
+ /var/lib/moodle(/.*)?		    gen_context(system_u:object_r:httpd_sys_rw_content_t,s0)
+ /var/lib/mod_security(/.*)?     gen_context(system_u:object_r:httpd_var_lib_t,s0)
+ /var/lib/nginx(/.*)?            gen_context(system_u:object_r:httpd_var_lib_t,s0)
++/var/opt/rh/rh-nginx18/lib/nginx(/.*)?            gen_context(system_u:object_r:httpd_var_lib_t,s0)
+ /var/lib/php/session(/.*)?		gen_context(system_u:object_r:httpd_var_run_t,s0)
+ /var/lib/php/wsdlcache(/.*)?		gen_context(system_u:object_r:httpd_var_run_t,s0)
+ 
+@@ -145,6 +147,7 @@ ifdef(`distro_suse', `
+ /var/log/httpd(/.*)?		gen_context(system_u:object_r:httpd_log_t,s0)
+ /var/log/lighttpd(/.*)?		gen_context(system_u:object_r:httpd_log_t,s0)
+ /var/log/nginx(/.*)?     gen_context(system_u:object_r:httpd_log_t,s0)
++/var/opt/rh/rh-nginx18/log(/.*)?     gen_context(system_u:object_r:httpd_log_t,s0)
+ /var/log/php-fpm(/.*)?      gen_context(system_u:object_r:httpd_log_t,s0)
+ /var/log/roundcubemail(/.*)?	gen_context(system_u:object_r:httpd_log_t,s0)
+ /var/log/suphp\.log.*	--	gen_context(system_u:object_r:httpd_log_t,s0)
+@@ -162,6 +165,7 @@ ifdef(`distro_debian', `
+ /var/run/lighttpd(/.*)?			gen_context(system_u:object_r:httpd_var_run_t,s0)
+ /var/run/mod_.*				gen_context(system_u:object_r:httpd_var_run_t,s0)
+ /var/run/nginx.*            gen_context(system_u:object_r:httpd_var_run_t,s0)
++/var/opt/rh/rh-nginx18/run/nginx(/.*)?            gen_context(system_u:object_r:httpd_var_run_t,s0)
+ /var/run/php-fpm(/.*)?      gen_context(system_u:object_r:httpd_var_run_t,s0)
+ /var/run/thttpd\.pid    -- gen_context(system_u:object_r:httpd_var_run_t,s0)
+ /var/run/wsgi.*			-s	gen_context(system_u:object_r:httpd_var_run_t,s0)
 diff --git a/apache.te b/apache.te
 index 3226dec..e9c7099 100644
 --- a/apache.te
@@ -10,6 +46,18 @@ index 3226dec..e9c7099 100644
  	nagios_read_log(httpd_t)
  ')
  
+diff --git a/certmonger.te b/certmonger.te
+index 7f683e5..fc5b086 100644
+--- a/certmonger.te
++++ b/certmonger.te
+@@ -117,6 +117,7 @@ optional_policy(`
+ 
+ optional_policy(`
+     ipa_manage_lib(certmonger_t)
++    ipa_manage_pid_files(certmonger_t)
+ ')
+ 
+ optional_policy(`
 diff --git a/chrome.te b/chrome.te
 index f50b201..5c852ff 100644
 --- a/chrome.te
@@ -525,6 +573,65 @@ index fbc6a67..b974353 100644
 +optional_policy(`
  	ssh_exec(glusterd_t)
  ')
+diff --git a/ipa.fc b/ipa.fc
+index 48d7322..5585d3b 100644
+--- a/ipa.fc
++++ b/ipa.fc
+@@ -4,3 +4,4 @@
+ 
+ /var/lib/ipa(/.*)?              gen_context(system_u:object_r:ipa_var_lib_t,s0)
+ 
++/var/run/ipa(/.*)?              gen_context(system_u:object_r:ipa_var_run_t,s0)
+diff --git a/ipa.if b/ipa.if
+index 123e906..c5a351b 100644
+--- a/ipa.if
++++ b/ipa.if
+@@ -92,3 +92,20 @@ interface(`ipa_read_lib',`
+     list_dirs_pattern($1, ipa_var_lib_t, ipa_var_lib_t)
+ ')
+ 
++########################################
++## <summary>
++##     Allow domain to manage ipa run files/dirs.
++## </summary>
++## <param name="domain">
++##     <summary>
++##     Domain allowed access.
++##     </summary>
++## </param>
++#
++interface(`ipa_manage_pid_files',`
++       gen_require(`
++               type ipa_var_run_t;
++       ')
++    manage_files_pattern($1, ipa_var_run_t, ipa_var_run_t)
++    manage_dirs_pattern($1, ipa_var_run_t, ipa_var_run_t)
++')
+diff --git a/ipa.te b/ipa.te
+index b60bc5f..a7f09d25 100644
+--- a/ipa.te
++++ b/ipa.te
+@@ -17,6 +17,9 @@ systemd_unit_file(ipa_otpd_unit_file_t)
+ type ipa_var_lib_t;
+ files_type(ipa_var_lib_t)
+ 
++type ipa_var_run_t;
++files_pid_file(ipa_var_run_t)
++
+ ########################################
+ #
+ # ipa_otpd local policy
+@@ -27,6 +30,10 @@ allow ipa_otpd_t self:capability2 block_suspend;
+ allow ipa_otpd_t self:fifo_file rw_fifo_file_perms;
+ allow ipa_otpd_t self:unix_stream_socket create_stream_socket_perms;
+ 
++manage_dirs_pattern(ipa_otpd_t, ipa_var_run_t, ipa_var_run_t)
++manage_files_pattern(ipa_otpd_t, ipa_var_run_t, ipa_var_run_t)
++files_pid_filetrans(ipa_otpd_t, ipa_var_run_t, file)
++
+ corenet_tcp_connect_radius_port(ipa_otpd_t)
+ 
+ dev_read_urand(ipa_otpd_t)
 diff --git a/mongodb.fc b/mongodb.fc
 index 91adcaf..e9e6bc5 100644
 --- a/mongodb.fc
@@ -808,10 +915,19 @@ index 231f2e2..56fba2e 100644
  
  can_exec(passenger_t, passenger_exec_t)
 diff --git a/qpid.te b/qpid.te
-index fc17eee..9f4739c 100644
+index fc17eee..8f641fc 100644
 --- a/qpid.te
 +++ b/qpid.te
-@@ -53,6 +53,7 @@ manage_files_pattern(qpidd_t, qpidd_var_run_t,  qpidd_var_run_t)
+@@ -46,13 +46,15 @@ fs_tmpfs_filetrans(qpidd_t, qpidd_tmpfs_t, { dir file })
+ 
+ manage_dirs_pattern(qpidd_t, qpidd_var_lib_t,  qpidd_var_lib_t)
+ manage_files_pattern(qpidd_t, qpidd_var_lib_t,  qpidd_var_lib_t)
+-files_var_lib_filetrans(qpidd_t, qpidd_var_lib_t, { file dir })
++manage_lnk_files_pattern(qpidd_t, qpidd_var_lib_t,  qpidd_var_lib_t)
++files_var_lib_filetrans(qpidd_t, qpidd_var_lib_t, { file dir lnk_file })
+ 
+ manage_dirs_pattern(qpidd_t, qpidd_var_run_t,  qpidd_var_run_t)
+ manage_files_pattern(qpidd_t, qpidd_var_run_t,  qpidd_var_run_t)
  files_pid_filetrans(qpidd_t, qpidd_var_run_t, { file dir })
  
  kernel_read_system_state(qpidd_t)
@@ -819,6 +935,14 @@ index fc17eee..9f4739c 100644
  
  auth_read_passwd(qpidd_t)
  
+@@ -64,6 +66,7 @@ corenet_tcp_sendrecv_generic_node(qpidd_t)
+ corenet_sendrecv_amqp_server_packets(qpidd_t)
+ corenet_tcp_bind_amqp_port(qpidd_t)
+ corenet_tcp_sendrecv_amqp_port(qpidd_t)
++corenet_tcp_connect_amqp_port(qpidd_t)
+ 
+ corenet_tcp_bind_matahari_port(qpidd_t)
+ corenet_tcp_connect_matahari_port(qpidd_t)
 diff --git a/rhcs.if b/rhcs.if
 index bf60580..29df561 100644
 --- a/rhcs.if

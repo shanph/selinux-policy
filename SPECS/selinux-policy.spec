@@ -19,7 +19,7 @@
 Summary: SELinux policy configuration
 Name: selinux-policy
 Version: 3.13.1
-Release: 23%{?dist}.18
+Release: 23%{?dist}.21
 License: GPLv2+
 Group: System Environment/Base
 Source: serefpolicy-%{version}.tgz
@@ -608,6 +608,20 @@ SELinux Reference policy mls base module.
 %endif
 
 %changelog
+* Tue Oct 13 2015 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-23.el7_1.21
+- Added labels for files provided by rh-nginx18 collection
+Resolves: #1270839
+
+* Mon Oct 5 2015 Miroslav Grepl <lvrabec@redhat.com> 3.13.1-23.el7_1.20
+- Add support for /var/run/ipa. Labeled it as ipa_var_run_t and allow certmonger to access it.
+Resolves:#1268774
+
+* Fri Sep 25 2015 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-23.el7_1.19
+-Allow qpid to create lnk_files in qpid_var_lib_t.
+Resolves: #1247279
+-Allow qpid daemon to connect on amqp tcp port.
+Resolves: #1261805
+
 * Thu Sep 3 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_1.18
 - Allow qpidd access to /proc/<pid>/net/psched
 Resolves: #1254318
