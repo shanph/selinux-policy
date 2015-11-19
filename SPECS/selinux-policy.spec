@@ -19,15 +19,15 @@
 Summary: SELinux policy configuration
 Name: selinux-policy
 Version: 3.13.1
-Release: 23%{?dist}.21
+Release: 60%{?dist}
 License: GPLv2+
 Group: System Environment/Base
 Source: serefpolicy-%{version}.tgz
 patch: policy-rhel-7.1-base.patch
 patch1: policy-rhel-7.1-contrib.patch
 patch2: policy-RHEL-7.1-flask.patch
-patch3: policy-rhel-7.1.z-base.patch
-patch4: policy-rhel-7.1.z-contrib.patch
+patch3: policy-rhel-7.2-base.patch
+patch4: policy-rhel-7.2-contrib.patch
 Source1: modules-targeted-base.conf 
 Source31: modules-targeted-contrib.conf
 Source2: booleans-targeted.conf
@@ -319,7 +319,10 @@ for i in $contrib_modules $base_modules; do \
     if [ $i != "sandbox.pp" ];then \
         echo "%verify(not md5 size mtime) /etc/selinux/%1/modules/active/modules/$i" >> %{buildroot}/%{_usr}/share/selinux/%1/nonbasemodules.lst \
     fi; \
-done
+done \
+if [ %1 != "mls" ];then \
+    echo "%ghost /etc/selinux/%1/modules/active/modules/docker.pp" >> %{buildroot}/%{_usr}/share/selinux/%1/nonbasemodules.lst \
+fi;
 
 %description
 SELinux Reference Policy - modular.
@@ -329,15 +332,15 @@ Based off of reference policy: Checked out revision  2.20091117
 
 %prep 
 %setup -n serefpolicy-contrib-%{version} -q -b 29
-%patch1 -p1
 %patch4 -p1
 contrib_path=`pwd`
 %setup -n serefpolicy-%{version} -q
-%patch -p1
 %patch3 -p1
+%patch2 -p1
 refpolicy_path=`pwd`
 cp $contrib_path/* $refpolicy_path/policy/modules/contrib
 rm -rf $refpolicy_path/policy/modules/contrib/kubernetes.*
+rm -rf $refpolicy_path/policy/modules/contrib/docker.*
 
 %install
 mkdir selinux_config
@@ -608,126 +611,435 @@ SELinux Reference policy mls base module.
 %endif
 
 %changelog
-* Tue Oct 13 2015 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-23.el7_1.21
-- Added labels for files provided by rh-nginx18 collection
-Resolves: #1270839
+* Wed Oct 14 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-60
+Allow hypervvssd to list all mountpoints to have VSS live backup working correctly.
+Resolves:#1247880
 
-* Mon Oct 5 2015 Miroslav Grepl <lvrabec@redhat.com> 3.13.1-23.el7_1.20
-- Add support for /var/run/ipa. Labeled it as ipa_var_run_t and allow certmonger to access it.
-Resolves:#1268774
+* Tue Oct 13 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-59
+- Revert Add missing labeling for /usr/libexec/abrt-hook-ccpp patch
+Resolves: #1254188
 
-* Fri Sep 25 2015 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-23.el7_1.19
--Allow qpid to create lnk_files in qpid_var_lib_t.
-Resolves: #1247279
--Allow qpid daemon to connect on amqp tcp port.
+* Thu Oct 8 2015 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-58
+- Allow search dirs in sysfs types in kernel_read_security_state.
+Resolves: #1254188
+- Fix kernel_read_security_state interface that source domain of this interface can search sysctl_fs_t dirs.
+Resolves: #1254188
+
+* Wed Oct 7 2015 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-57
+- Add missing labeling for /usr/libexec/abrt-hook-ccpp as a part of #1245477 and #1242467 bugs
+Resolves: #1254188
+- We need allow connect to xserver for all sandbox_x domain because we have one type for all sandbox processes.
+Resolves:#1261938
+
+* Fri Oct 2 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-56
+- Remove labeling for modules_dep_t file contexts to have labeled them as modules_object_t.
+- Update files_read_kernel_modules() to contain modutils_read_module_deps_files() calling because module deps labeling could remain and it allows to avoid regressions.
+Resolves:#1266928
+
+* Tue Sep 29 2015 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-55
+- We need to require sandbox_web_type attribute in sandbox_x_domain_template(). 
+Resolves: #1261938
+- ipsec: The NM helper needs to read the SAs
+Resolves: #1259786
+- ipsec: Allow ipsec management to create ptys
+Resolves: #1259786
+
+* Tue Sep 29 2015 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-54
+- Add temporary fixes for sandbox related to #1103622. It allows to run everything under one sandbox type.
+Resolves:#1261938
+- Allow abrt_t domain to write to kernel msg device.
+Resolves: #1257828
+- Allow rpcbind_t domain to change file owner and group
+Resolves: #1265266
+
+* Tue Sep 22 2015 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-53
+- Allow smbcontrol to create a socket in /var/samba which uses for a communication with smbd, nmbd and winbind. 
+Resolves: #1256459
+
+* Fri Sep 18 2015 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-52
+- Allow dirsrv-admin script to read passwd file. Allow dirsrv-admin script to read httpd pid files. Label dirsrv-admin unit file and allow dirsrv-admin domains to use it.
+Resolves: #1230300
+- Allow qpid daemon to connect on amqp tcp port.
 Resolves: #1261805
 
-* Thu Sep 3 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_1.18
-- Allow qpidd access to /proc/<pid>/net/psched
-Resolves: #1254318
+* Fri Sep 18 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-51
+- Label /etc/ipa/nssdb dir as cert_t
+Resolves:#1262718
+- Do not provide docker policy files which is shipped by docker-selinux.rpm
+Resolves:#1262812
 
-* Wed Aug 28 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_1.17
-- Dontaudit chrome to read passwd file.
-Resolves:#1257816
+* Thu Sep 17 2015 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-50
+- Add labels for afs binaries: dafileserver, davolserver, salvageserver, dasalvager 
+Resolves: #1192338
+- Add lsmd_plugin_t sys_admin capability, Allow lsmd_plugin_t getattr from sysfs filesystem.
+ Resolves: #1238079
+- Allow rhsmcertd_t send signull to unconfined_service_t domains. 
+Resolves: #1176078
+- Remove file transition from snmp_manage_var_lib_dirs() interface which created snmp_var_lib_t dirs in var_lib_t.
+- Allow openhpid_t daemon to manage snmp files and dirs. 
+Resolves: #1243902
+- Allow mdadm_t domain read/write to general ptys and unallocated ttys. 
+Resolves: #1073314
+- Add interface unconfined_server_signull() to allow domains send signull to unconfined_service_t
+ Resolves: #1176078
 
-* Wed Aug 26 2015 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-23.el7_1.16
-- Revert Allow qpidd access to /proc/<pid>/net/psched
-Resolves: #1254318
+* Fri Sep 11 2015 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-49
+- Allow systemd-udevd to access netlink_route_socket to change names for network interfaces without unconfined.pp module. It affects also MLS. 
+Resolves:#1250456
 
-* Wed Aug 19 2015 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-23.el7_1.15
--Allow qpidd access to /proc/<pid>/net/psched
-Resolves: #1254318
+* Thu Sep 10 2015 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-48
+- Fix labeling for fence_scsi_check script
+Resolves: #1255020
+- Allow openhpid to read system state Allow openhpid to connect to tcp http port.
+ Resolves: #1244248
+- Allow openhpid to read snmp var lib files.
+ Resolves: #1243902
+- Allow openvswitch_t domains read kernel dependencies due to openvswitch run modprobe
+- Allow unconfined_t domains to create /var/run/xtables.lock with iptables_var_run_t
+Resolves: #1243403
+- Remove bin_t label for /usr/share/cluster/fence_scsi_check\.pl 
+Resolves: #1255020
 
-* Tue Aug 18 2015 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-23.el7_1.14
+* Wed Sep 02 2015 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-47
+- Fix regexp in chronyd.fc file
+Resolves: #1243764
+- Allow passenger to getattr filesystem xattr
+Resolves: #1196555
+- Label mdadm.conf.anackbak as mdadm_conf_t file.
+Resolves: #1088904
+- Revert "Allow pegasus_openlmi_storage_t create mdadm.conf.anacbak file in /etc."
+- Allow watchdog execute fenced python script.
+Resolves: #1255020
+- Added inferface watchdog_unconfined_exec_read_lnk_files()
+- Remove labeling for /var/db/.*\.db as etc_t to label db files as system_db_t.
+Resolves: #1230877
+
+* Thu Aug 27 2015 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-46
+- Allow watchdog execute fenced python script. Resolves: #1255020
+- Added inferface watchdog_unconfined_exec_read_lnk_files()
+- Label /var/run/chrony-helper dir as chronyd_var_run_t. Resolves: #1243764
+- Allow dhcpc_t domain transition to chronyd_t Resolves: #1243764
+
+* Fri Aug 21 2015 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-45
+- Fix postfix_spool_maildrop_t,postfix_spool_flush_t contexts in postfix.fc file.
+Resolves: #1252442
+
+* Wed Aug 19 2015 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-44
+- Allow exec pidof under hypervkvp domain.
+Resolves: #1254870
+- Allow hypervkvp daemon create connection to the system DBUS
+Resolves: #1254870
+
+* Wed Aug 19 2015 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-43
+- Allow openhpid_t to read system state.
+Resolves: #1244248
+- Added labels for files provided by rh-nginx18 collection
+Resolves: #1249945
+- Dontaudit block_suspend capability for ipa_helper_t, this is kernel bug. Allow ipa_helper_t capability net_admin. Allow ipa_helper_t to list /tmp. Allow ipa_helper_t to read rpm db.
+Resolves: #1252968
+- Allow rhsmcertd exec rhsmcertd_var_run_t files and rhsmcerd_tmp_t files. This rules are in hide_broken_sympthons until we find better solution.
+Resolves: #1243431
+- Allow abrt_dump_oops_t to read proc_security_t files.
+- Allow abrt_dump_oops to signull all domains Allow abrt_dump_oops to read all domains state Allow abrt_dump_oops to ptrace all domains
+- Add interface abrt_dump_oops_domtrans()
+- Add mountpoint dontaudit access check in rhsmcertd policy.
+Resolves: #1243431
+- Allow samba_net_t to manage samba_var_t sock files.
+Resolves: #1252937
 - Allow chrome setcap to itself.
-Resolves: #1254565
+Resolves: #1251996
+- Allow httpd daemon to manage httpd_var_lib_t lnk_files.
+Resolves: #1253706
+- Allow chronyd exec systemctl
+Resolves: #1243764
+- Add inteface chronyd_signal Allow timemaster_t send generic signals to chronyd_t.
+Resolves: #1243764
+- Added interface fs_dontaudit_write_configfs_dirs
+- Add label for kernel module dep files in /usr/lib/modules
+Resolves:#916635
+- Allow kernel_t domtrans to abrt_dump_oops_t
+- Added to files_dontaudit_write_all_mountpoints intefface new dontaudit rule, that domain included this interface dontaudit capability dac_override.
+- Allow systemd-networkd to send logs to systemd-journald.
+Resolves: #1236616
 
-* Tue Jul 28 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_1.13
-- glusterd call pcs utility which calls find for cib.* files and runs pstree under glusterd. Dontaudit access to security files and update gluster boolean to reflect these changes.
--  Allow glusterd to communicate with cluster domains over stream socket.
-Resolves:#1238963
+* Wed Aug 12 2015 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-42
+- Fix label on /var/tmp/kiprop_0
+Resolves:#1220763
+- Allow lldpad_t to getattr tmpfs_t.
+Resolves: #1246220
+- Label /dev/shm/lldpad.* as lldapd_tmpfs_t
+Resolves: #1246220
+- Allow audisp client to read system state.
 
-* Tue Jul 21 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_1.12
-- Allow iptables to read ctdbd lib files.
-Resolves:#1238965
+* Tue Aug 11 2015 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-41
+- Allow pcp_domain to manage pcp_var_lib_t lnk_files.
+Resolves: #1252341
+- Label /var/run/xtables.* as iptables_var_run_t
+Resolves: #1243403
 
-* Mon Jul 20 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_1.11
+* Mon Aug 10 2015 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-40
+- Add interface to read/write watchdog device
+- Add labels for /dev/memory_bandwith and /dev/vhci. Thanks ssekidde
+Resolves:#1210237
+- Allow apcupsd_t to read /sys/devices 
+Resolves:#1189185
+- Allow logrotate to reload services.
+Resolves: #1242453
+- Allow openhpid use libwatchdog plugin. (Allow openhpid_t rw watchdog device)
+Resolves: #1244260
+- Allow openhpid liboa_soap plugin to read generic certs.
+Resolves: #1244248
+- Allow openhpid liboa_soap plugin to read resolv.conf file.
+Resolves: #1244248
+- Label /usr/libexec/chrony-helper as chronyd_exec_t
+- Allow chronyd_t to read dhcpc state.
+- Allow chronyd to execute mkdir command.
+
+* Fri Aug 07 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-39
+- Allow mdadm to access /dev/random and add support to create own files/dirs as mdadm_tmpfs_t.
+Resolves:#1073314
+- Allow udev, lvm and fsadm to access systemd-cat in /var/tmp/dracut if 'dracut -fv' is executed in MLS.
+- Allow admin SELinu users to communicate with kernel_t. It is needed to access /run/systemd/journal/stdout if 'dracut -vf' is executed. We allow it for other SELinux users.
+- Allow sysadm to execute systemd-sysctl in the sysadm_t domain. It is needed for ifup command in MLS mode.
+- Add fstools_filetrans_named_content_fsadm() and call it for named_filetrans_domain domains. We need to be sure that /run/blkid is created with correct labeling.
+Resolves:#1183503
+- Add support for /etc/sanlock which is writable by sanlock daemon.
+Resolves:#1231377
+- Allow useradd add homedir located in /var/lib/kdcproxy in ipa-server RPM scriplet.
+Resolves:#1243775 
+- Allow snapperd to pass data (one way only) via pipe negotiated over dbus
+Resolves:#1250550
+- Allow lsmd also setuid capability. Some commands need to executed under root privs. Other commands are executed under unprivileged user.
+
+* Wed Aug 05 2015 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-38
+- Allow openhpid to use libsnmp_bc plugin (allow read snmp lib files).
+  Resolves: #1243902
+- Allow lsm_plugin_t to read sysfs, read hwdata, rw to scsi_generic_device
+  Resolves: #1238079
+- Allow lsm_plugin_t to rw raw_fixed_disk.
+  Resolves:#1238079
+- Allow rhsmcertd to send signull to unconfined_service.
+
+* Thu Aug 03 2015 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-37
+- Allow httpd_suexec_t to read and write Apache stream sockets 
+Resolves: #1243569
+- Allow qpid to create lnk_files in qpid_var_lib_t
+Resolves: #1247279
+* Thu Jul 30 2015 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-36
+- Allow drbd to get attributes from filesystems.
+- Allow redis to read kernel parameters.
+Resolves: #1209518
+- Allow virt_qemu_ga_t domtrans to passwd_t
+- Allow audisp_remote_t to start power unit files domain to allow halt system.
+Resolves: #1186780
+- Allow audisp_remote_t to read/write user domain pty.
+Resolves: #1186780
+- Label /usr/sbin/chpasswd as passwd_exec_t.
+- Allow sysadm to administrate ldap environment and allow to bind ldap port to allow to setup an LDAP server (389ds).
+Resolves:#1221121
+
+* Mon Jul 27 2015 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-35
+- gnome_dontaudit_search_config() needs to be a part of optinal_policy in pegasus.te
+- Allow pcp_pmcd daemon to read postfix config files.
+- Allow pcp_pmcd daemon to search postfix spool dirs.
+Resolves: #1213740
+- Added Booleans: pcp_read_generic_logs.
+Resolves: #1213740
+- Allow drbd to read configuration options used when loading modules.
+Resolves: #1134883
 - Allow glusterd to manage nfsd and rpcd services.
-- Allow samba_t net_admin capability to make CIFS mount working.
-Resolves:#1238965
-- Dontaudit smbd_t block_suspend capability.
+- Allow glusterd to communicate with cluster domains over stream socket.
+- glusterd call pcs utility which calls find for cib.* files and runs pstree under glusterd. Dontaudit access to security files and update gluster boolean to reflect these changes.
 
-* Fri Jul 17 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_1.10
-- Allow gluster to connect to all ports. It is required by random services executed by gluster.
-- Allow glusterd to execute showmount in the showmount domain.
-- Add samba_signull_unconfined_net()
+* Mon Jul 20 2015 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-34
+- Allow glusterd to manage nfsd and rpcd services.
+- Allow networkmanager to  communicate via dbus with systemd_hostanmed. 
+Resolves: #1234954
+- Allow stream connect logrotate to prosody.
+- Add prosody_stream_connect() interface.
+-  httpd should be able to send signal/signull to httpd_suexec_t, instead of httpd_suexec_exec_t.
+- Allow prosody to create own tmp files/dirs.
+Resolves:#1212498
+
+* Wed Jul 15 2015 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-33
+- Allow networkmanager read rfcomm port.
+Resolves:#1212498
+- Remove non exists label.
+- Fix *_admin intefaces where body is not consistent with header.
+- Label /usr/afs/ as afs_files_t, Allow afs_bosserver_t create afs_config_t and afs_dbdir_t dirs under afs_files_t, Allow afs_bosserver_t read kerberos config
+- Remove non exits nfsd_ro_t label.
+- Make all interfaces related to openshift_cache_t as deprecated.
+- Add rpm_var_run_t label to rpm_admin header
+- Add jabberd_lock_t label to jabberd_admin header.
+- Add samba_unconfined_script_exec_t to samba_admin header.
+- inn daemon should create innd_log_t objects in var_log_t instead of innd_var_run_t
+- Fix ctdb policy
 - Add samba_signull_winbind()
-Resolves:#1232755
-- Add logging_syslogd_run_nagios_plugins boolean for rsyslog to allow transition to nagios unconfined plugins.
-Resolves:#1238963
-- Label gluster python hooks also as bin_t.
-Resolves:#1238965
-- We allow can_exec() on ssh_keygen on gluster. But there is a transition defined by init_initrc_domain() because we need to allow execute unconfined services by glusterd. So ssh-keygen ends up with ssh_keygen_t and we need to allow to manage /var/lib/glusterd/geo-replication/secret.pem.
+- Add samba_signull_unconfined_net()
+- Allow ctdbd_t send signull to samba_unconfined_net_t.
+- Allow openshift_initrc_t to communicate with firewalld over dbus 
+Resolves:#1221326
 
-* Tue Jul 7 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_1.9
-- S30samba-start gluster hooks wants to search audit logs. Dontaudit it.
-- Allow glusterd to interact with gluster tools running in a user domain
-- nrpe needs kill capability to make gluster moniterd nodes working.
-Resolves:#1238964
+* Tue Jul 14 2015 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-32
+- Allow gluster to connect to all ports. It is required by random services executed by gluster.
+- Add interfaces winbind_signull(), samba_unconfined_net_signull().
+- Dontaudit smbd_t block_suspend capability. This is kernel bug.
+- Allow ctdbd sending signull to process winbind, samba_unconfined_net, to
+    checking if processes exists.
+- Add tmpreaper booleans to use nfs_t and samba_share_t.
+- Fix path from /usr/sbin/redis-server to /usr/bin/redis-server
+- Allow connect ypserv to portmap_port_t
+- Fix paths in inn policy, Allow innd read innd_log_t dirs, Allow innd execute innd_etc_t files
+- Add support for openstack-nova-* packages
+- Allow NetworkManager_t send signull to dnssec_trigger_t.
+- Allow glusterd to execute showmount in the showmount domain.
+- Label swift-container-reconciler binary as swift_t.
+- Allow dnssec_trigger_t relabelfrom dnssec_trigger_var_run_t files.
+- Add cobbler_var_lib_t to "/var/lib/tftpboot/boot(/.*)?"
+Resolves:#1213540
+- Merge all nova_* labels under one nova_t.
+
+* Wed Jul 8 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-31
+- Add logging_syslogd_run_nagios_plugins boolean for rsyslog to allow transition to nagios unconfined plugins
+Resolves:#1233550
+- Allow dnssec_trigger_t create dnssec_trigger_tmp_t files in /var/tmp/
+- Add support for oddjob based helper in FreeIPA.
+- Add new boolean - httpd_run_ipa to allow httpd process to run IPA helper and dbus chat with oddjob.
+- Add nagios_domtrans_unconfined_plugins() interface.
+- Update mta_filetrans_named_content() interface to cover more db files. 
+Resolves:#1167468
+- Add back ftpd_use_passive_mode boolean with fixed description.
+- Allow pmcd daemon stream connect to mysqld.
+- Allow pcp domains to connect to own process using unix_stream_socket. 
+Resolves:#1213709
+- Allow  abrt-upload-watch service to dbus chat with ABRT daemon and fsetid capability to allow run reporter-upload correctly.
+- Add new boolean - httpd_run_ipa to allow httpd process to run IPA helper and dbus chat with oddjob.
+- Add support for oddjob based helper in FreeIPA.
+- Allow dnssec_trigger_t create dnssec_trigger_tmp_t files in /var/tmp/
+
+
+* Thu Jul 2 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-30
+- Allow iptables to read ctdbd lib files.
+Resolves:#1224879
+- Add systemd_networkd_t to nsswitch domains.
+- Allow drbd_t write to fixed_disk_device. Reason: drbdmeta needs write to fixed_disk_device during initialization. 
+Resolves:#1130675
+- Allow NetworkManager write to sysfs. 
+- Fix cron_system_cronjob_use_shares boolean to call fs interfaces which contain only entrypoint permission.
 - Add cron_system_cronjob_use_shares boolean to allow system cronjob to be executed from shares - NFS, CIFS, FUSE. It requires "entrypoint" permissios on nfs_t, cifs_t and fusefs_t SELinux types.
-- Allow ctdb_t sending signull to smbd_t, for checking if smbd process exists.
+- Allow NetworkManager write to sysfs. 
+- Allow ctdb_t sending signull to smbd_t, for checking if smbd process exists. 
+- Dontaudit apache to manage snmpd_var_lib_t files/dirs. 
+- Add interface snmp_dontaudit_manage_snmp_var_lib_files().
+- Dontaudit mozilla_plugin_t cap. sys_ptrace. 
+- Rename xodbc-connect port to xodbc_connect
+- Allow ovsdb-server to connect on xodbc-connect and ovsdb tcp ports. 
+- Allow iscsid write to fifo file kdumpctl_tmp_t. Appears when kdump generates the initramfs during the kernel boot. 
+- Dontaudit chrome to read passwd file. 
+- nrpe needs kill capability to make gluster moniterd nodes working. 
+Resolves:#1235587
 
-* Mon Jun 15 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_1.8
-- Back port passenger fixes from RHEL-7.2
-- Back port httpd fixes related to gluster+nagios.
-- Back port glusterd changs from RHEL-7.2 related to Gluster.
-- Back port ctdbd changs from RHEL-7.2 related to Gluster.
-- Back port nagios changs from RHEL-7.2 related to Gluster.
-- Back port samba changs from RHEL-7.2 related to Gluster.
-Resolves:#1230292
-Resolves:#1230299
-Resolves:#1231649
-Resolves:#1231930
-Resolves:#1231942
+* Wed Jun 17 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-29
+- We allow can_exec() on ssh_keygen on gluster. But there is a transition defined by init_initrc_domain() because we need to allow execute unconfined services by glusterd. So ssh-keygen ends up with ssh_keygen_t and we need to allow to manage /var/lib/glusterd/geo-replication/secret.pem.
+- Allow sshd to execute gnome-keyring if there is configured pam_gnome_keyring.so.
+- Allow gnome-keyring executed by passwd to access /run/user/UID/keyring to change a password. 
+- Label gluster python hooks also as bin_t.
+- Allow glusterd to interact with gluster tools running in a user domain
+- Add glusterd_manage_lib_files() interface.
+- ntop reads /var/lib/ntop/macPrefix.db and it needs dac_override. It has setuid/setgid. 
+- Allow samba_t net_admin capability to make CIFS mount working.
+- S30samba-start gluster hooks wants to search audit logs. Dontaudit it.
+Resolves:#1224879
 
-* Wed Apr 29 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_1.7
-- Label /usr/libexec/postgresql-ctl as postgresql_exec_t
-- Update virt_read_pid_files() interface to allow read also symlinks with virt_var_run_t type.
-- Add labeling for /usr/libexec/mysqld_safe-scl-helper.
-- Add support for /usr/libexec/mongodb-scl-helper RHSCL helper script.
-Resolves:#1209942 
-- Allow mysqld_t to use pam.It is needed by MariDB if auth_apm.so auth plugin is used
-Resolves:#1214236
-- Added label mysqld_etc_t for /etc/my.cnf.d/ dir.
-Resolves:#1214235
-- Add support for mongod/mongos systemd unit files.
-Resolves:#1214194
+* Mon Jun 15 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-28
+- Allow glusterd to send generic signals to systemd_passwd_agent processes.
+- Allow glusterd to access init scripts/units without defined policy
+- Allow glusterd to run init scripts.
+- Allow glusterd to execute /usr/sbin/xfs_dbin glusterd_t domain.
+Resolves:#1224879
 
-* Tue Apr 21 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_1.6
-- Make mongodb_t as nsswitch domain
-- ALlow mongod execmem by default
-Resolves:#1212970
+* Fri Jun 12 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-27
+- Calling cron_system_entry() in pcp_domain_template needs to be a part of optional_policy block.
+- Allow samba-net to access /var/lib/ctdbd dirs/files.
+- Allow glusterd to send a signal to smbd.
+- Make ctdbd as home manager to access also FUSE.
+- Allow glusterd to use geo-replication gluster tool.
+- Allow glusterd to execute ssh-keygen.
+- Allow glusterd to interact with cluster services.
+- Allow glusterd to connect to the system DBUS for service (acquire_svc).
+- Label /dev/log correctly.
+Resolves:#1230932
 
-* Wed Apr 8 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_1.5
-- Update policy/mls for sockets related to accept.
-Resolves:#1207549
-
-* Tue Mar 31 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_1.4
-- Update policy/mls for sockets. Rules were contradictory.
-Resolves:#1207549
-
-* Wed Mar 25 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_1.3
+* Tue Jun 9 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-26
+- Back port the latest F22 changes to RHEL7. It should fix most of RHEL7.2 bugs
+- Add cgdcbxd policy 
+Resolves:#1072493
+- Fix ftp_homedir boolean
+Resolve:#1097775
 - Dontaudit ifconfig writing inhertited /var/log/pluto.log.
-Resolves:#1205580
-- Update init_rw_tcp_sockets() interface to use getopt and setopt.
+- Allow cluster domain to dbus chat with systemd-logind.
+Resolves:#1145215
+- Dontaudit write access to inherited kdumpctl tmp files
+Resolves:#1156442
+- Allow isnsd_t to communicate with sssd
+Resolves:#1167702
+- Allow rwho_t to communicate with sssd
+Resolves:#1167718
+- Allow sblim_gatherd_t to communicate with sssd
+Resolves:#1167732
+- Allow pkcs_slotd_t to communicate with sssd
+Resolves:#1167737
+- Allow openvswitch_t to communicate with sssd
+Resolves:#1167816
+- Allow mysqld_safe_t to communicate with sssd
+Resolves:#1167832
+- Allow sshd_keygen_t to communicate with sssd
+Resolves:#1167840
+- Add support for iprdbg logging files in /var/log.
+Resolves:#1174363
+- Allow tmpreaper_t to manage ntp log content
+Resolves:#1176965
+- Allow gssd_t to manage ssh keyring
+Resolves:#1184791
+- Allow httpd_sys_script_t to send system log messages
+Resolves:#1185231
+- Allow apcupsd_t to read /sys/devices
+Resolves:#1189185
+- Allow dovecot_t sys_resource capability
+Resolves:#1191143
+- Add support for mongod/mongos systemd unit files.
+Resolves:#1197038
+- Add bacula fixes
+- Added label mysqld_etc_t for /etc/my.cnf.d/ dir.
+Resolves:#1203991
 
-* Mon Mar 23 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_1.2
-- Use enable_mls instead of enabled_mls in userdomain.if
-Resolves:#1204778
+* Thu May 14 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-25
+- Label /usr/libexec/postgresql-ctl as postgresql_exec_t. 
+- Add more restriction on entrypoint for unconfined domains.
+- Only allow semanage_t to be able to setenforce 0, no all domains that use selinux_semanage interface
+- Allow all domains to read /dev/urandom. It is needed by all apps/services linked to libgcrypt. There is no harm to allow it by default.
+- Update policy/mls for sockets related to access perm. Rules were contradictory.
+- Add nagios_run_pnp4nagios and nagios_run_sudo booleans to allow r
+un sudo from NRPE utils scripts and allow run nagios in conjunction w
+ith PNP4Nagios.
+Resolves:#1201054
+- Don't use deprecated userdom_manage_tmpfs_role() interface calliing and use userdom_manage_tmp_role() instead.
+- Update virt_read_pid_files() interface to allow read also symlinks with virt_var_run_t type
+- Label /var/lib/tftpboot/aarch64(/.*)? and /var/lib/tftpboot/images2(/.*)?
+- Add support for iprdbg logging files in /var/log.
+- Add fixes to rhsmcertd_t
+- Allow puppetagent_t to transfer firewalld messages over dbus
+- Add support for /usr/libexec/mongodb-scl-helper RHSCL helper script.
+- Added label mysqld_etc_t for /etc/my.cnf.d/ dir.
+- Add support for mongod/mongos systemd unit files.
+- cloudinit and rhsmcertd need to communicate with dbus
+- Allow dovecot_t sys_resource capability
 
-* Mon Mar 23 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23.el7_1.1
+* Tue Mar 31 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-24
+- ALlow mongod execmem by default.
+- Update policy/mls for sockets. Rules were contradictory.
+Resolves:#1207133
 - Allow a user to login with different security level via ssh.
-Resolves:#1204778
 
 * Wed Jan 30 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-23
 - Update seutil_manage_config() interface.
@@ -5568,7 +5880,7 @@ dontaudit domain domain:process { noatsecure siginh rlimitinh } ;
 - Add loop_control_device_t
 - Allow mdadm to request kernel to load module
 - Allow domains that start other domains via systemctl to search unit dir
-- systemd_tmpfiles, needs to list any file systems mounted on /tmp
+- systemd_tmpfilses, needs to list any file systems mounted on /tmp
 - No one can explain why radius is listing the contents of /tmp, so we will dontaudit
 - If I can manage etc_runtime files, I should be able to read the links
 - Dontaudit hostname writing to mock library chr_files
