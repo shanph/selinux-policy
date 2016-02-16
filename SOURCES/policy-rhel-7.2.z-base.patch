@@ -1,0 +1,29 @@
+diff --git a/policy/modules/kernel/filesystem.if b/policy/modules/kernel/filesystem.if
+index 2afd2f6..2fc80d1 100644
+--- a/policy/modules/kernel/filesystem.if
++++ b/policy/modules/kernel/filesystem.if
+@@ -2633,6 +2633,24 @@ interface(`fs_rw_hugetlbfs_files',`
+ 
+ ########################################
+ ## <summary>
++##	Manage  hugetlbfs files.
++## </summary>
++## <param name="domain">
++##	<summary>
++##	Domain allowed access.
++##	</summary>
++## </param>
++#
++interface(`fs_manage_hugetlbfs_files',`
++	gen_require(`
++		type hugetlbfs_t;
++	')
++
++	manage_files_pattern($1, hugetlbfs_t, hugetlbfs_t)
++')
++
++########################################
++## <summary>
+ ##	Execute hugetlbfs files.
+ ## </summary>
+ ## <param name="domain">

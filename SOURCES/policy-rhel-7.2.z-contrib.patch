@@ -1,0 +1,62 @@
+diff --git a/ctdb.if b/ctdb.if
+index 6b7d687..06895f3 100644
+--- a/ctdb.if
++++ b/ctdb.if
+@@ -55,6 +55,23 @@ interface(`ctdbd_signal',`
+         allow $1 ctdbd_t:process signal;
+ ')
+ 
++#######################################
++## <summary>
++##  Allow domain to sigchld ctdbd.
++## </summary>
++## <param name="domain">
++##  <summary>
++##  Domain allowed access.
++##  </summary>
++## </param>
++#
++interface(`ctdbd_sigchld',`
++    gen_require(`
++        type ctdbd_t;
++    ')
++        allow $1 ctdbd_t:process sigchld;
++')
++
+ ########################################
+ ## <summary>
+ ##	Read ctdbd's log files.
+diff --git a/openvswitch.te b/openvswitch.te
+index 1b606d8..2d00be4 100644
+--- a/openvswitch.te
++++ b/openvswitch.te
+@@ -32,7 +32,7 @@ systemd_unit_file(openvswitch_unit_file_t)
+ # openvswitch local policy
+ #
+ 
+-allow openvswitch_t self:capability { net_admin ipc_lock sys_module sys_nice sys_resource };
++allow openvswitch_t self:capability { net_admin ipc_lock sys_module sys_nice sys_rawio sys_resource };
+ allow openvswitch_t self:capability2 block_suspend;
+ allow openvswitch_t self:process { fork setsched setrlimit signal };
+ allow openvswitch_t self:fifo_file rw_fifo_file_perms;
+@@ -92,6 +92,8 @@ files_read_kernel_modules(openvswitch_t)
+ 
+ fs_getattr_all_fs(openvswitch_t)
+ fs_search_cgroup_dirs(openvswitch_t)
++fs_manage_hugetlbfs_files(openvswitch_t)
++fs_manage_hugetlbfs_dirs(openvswitch_t)
+ 
+ auth_use_nsswitch(openvswitch_t)
+ 
+diff --git a/samba.te b/samba.te
+index bf7a710..aac4015 100644
+--- a/samba.te
++++ b/samba.te
+@@ -726,6 +726,7 @@ userdom_use_inherited_user_terminals(smbcontrol_t)
+ 
+ optional_policy(`
+ 	ctdbd_stream_connect(smbcontrol_t)
++	ctdbd_sigchld(smbcontrol_t)
+ ')
+ 
+ ########################################
