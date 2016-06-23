@@ -19,7 +19,7 @@
 Summary: SELinux policy configuration
 Name: selinux-policy
 Version: 3.13.1
-Release: 60%{?dist}.3
+Release: 60%{?dist}.7
 License: GPLv2+
 Group: System Environment/Base
 Source: serefpolicy-%{version}.tgz
@@ -615,6 +615,29 @@ SELinux Reference policy mls base module.
 %endif
 
 %changelog
+* Fri Jun 10 2016 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-60.7
+- Allow glusterd domain read krb5_keytab_t files.
+Resolves: rhbz#1344630
+
+* Fri May 27 2016 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-60.6
+- Allow ganesha-ha.sh script running under unconfined_t domain communicate with glusterd_t domains via dbus.
+Resolves:#1340365
+
+* Mon May 16 2016 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-60.5
+- Label /var/log/ganesha.log as gluster_log_t
+- Allow glusterd_t domain to create glusterd_log_t files.
+- Label /var/run/ganesha.pid as gluster_var_run_t.
+Resolves: rhbz#1333903
+
+* Mon May 09 2016 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-60.4
+- Label /usr/bin/ganesha.nfsd as glusterd_exec_t to run ganesha as glusterd_t.
+- Allow glusterd_t stream connect to rpbind_t.
+- Allow cluster_t to create symlink /var/lib/nfs labeled as var_lib_nfs_t.
+- Add interface rpc_filetrans_var_lib_nfs_content()
+- Add new boolean: rpcd_use_fusefs to allow rpcd daemon use fusefs.
+Resolves: rhbz#1333875
+Resolves: rhbz#1333903
+
 * Wed Jan 27 2016 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-60.3
 - Allow openvswitch domain capability sys_rawio
 Resolves: rhbz#1299405
