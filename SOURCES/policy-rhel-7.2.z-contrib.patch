@@ -48,8 +48,37 @@ index 8c8c6c9..52b4110 100644
  /var/run/glusterd.*	--	gen_context(system_u:object_r:glusterd_var_run_t,s0)
  /var/run/glusterd.*	-s	gen_context(system_u:object_r:glusterd_var_run_t,s0)
 +/var/run/ganesha.*	--	gen_context(system_u:object_r:glusterd_var_run_t,s0)
+diff --git a/glusterd.if b/glusterd.if
+index fc9bf19..764ae00 100644
+--- a/glusterd.if
++++ b/glusterd.if
+@@ -158,6 +158,24 @@ interface(`glusterd_read_conf',`
+ 
+ ######################################
+ ## <summary>
++##  Dontaudit Read  /var/lib/glusterd files.
++## </summary>
++## <param name="domain">
++##  <summary>
++##  Domain allowed access.
++##  </summary>
++## </param>
++#
++interface(`glusterd_dontaudit_read_lib_dirs',`
++       gen_require(`
++               type glusterd_var_lib_t;
++       ')
++
++    dontaudit $1 glusterd_var_lib_t:dir list_dir_perms;
++')
++
++######################################
++## <summary>
+ ##  Read and write /var/lib/glusterd files.
+ ## </summary>
+ ## <param name="domain">
 diff --git a/glusterd.te b/glusterd.te
-index b974353..0c149cd 100644
+index b974353..5c9d08d 100644
 --- a/glusterd.te
 +++ b/glusterd.te
 @@ -62,7 +62,7 @@ files_type(glusterd_brick_t)
@@ -74,7 +103,15 @@ index b974353..0c149cd 100644
  
  manage_dirs_pattern(glusterd_t, glusterd_var_run_t, glusterd_var_run_t)
  manage_files_pattern(glusterd_t, glusterd_var_run_t, glusterd_var_run_t)
-@@ -240,12 +238,21 @@ optional_policy(`
+@@ -103,6 +101,7 @@ manage_fifo_files_pattern(glusterd_t, glusterd_brick_t, glusterd_brick_t)
+ manage_lnk_files_pattern(glusterd_t, glusterd_brick_t, glusterd_brick_t)
+ manage_blk_files_pattern(glusterd_t, glusterd_brick_t, glusterd_brick_t)
+ manage_chr_files_pattern(glusterd_t, glusterd_brick_t, glusterd_brick_t)
++manage_sock_files_pattern(glusterd_t, glusterd_brick_t, glusterd_brick_t)
+ relabel_files_pattern(glusterd_t, glusterd_brick_t, glusterd_brick_t)
+ relabel_lnk_files_pattern(glusterd_t, glusterd_brick_t, glusterd_brick_t)
+ relabel_dirs_pattern(glusterd_t, glusterd_brick_t, glusterd_brick_t)
+@@ -240,12 +239,21 @@ optional_policy(`
      optional_policy(`
          policykit_dbus_chat(glusterd_t)
      ')
@@ -96,7 +133,7 @@ index b974353..0c149cd 100644
  optional_policy(`
      lvm_domtrans(glusterd_t)
  ')
-@@ -281,6 +288,7 @@ optional_policy(`
+@@ -281,6 +289,7 @@ optional_policy(`
      rpc_domtrans_nfsd(glusterd_t)
      rpc_domtrans_rpcd(glusterd_t)
      rpc_manage_nfs_state_data(glusterd_t)
@@ -104,6 +141,19 @@ index b974353..0c149cd 100644
  ')
  
  optional_policy(`
+diff --git a/logrotate.te b/logrotate.te
+index 08c168f..71025ab 100644
+--- a/logrotate.te
++++ b/logrotate.te
+@@ -146,6 +146,8 @@ init_stream_connect(logrotate_t)
+ 
+ miscfiles_read_hwdata(logrotate_t)
+ 
++term_dontaudit_use_unallocated_ttys(logrotate_t)
++
+ userdom_use_inherited_user_terminals(logrotate_t)
+ userdom_list_user_home_dirs(logrotate_t)
+ userdom_use_unpriv_users_fds(logrotate_t)
 diff --git a/openvswitch.te b/openvswitch.te
 index 1b606d8..2d00be4 100644
 --- a/openvswitch.te
@@ -220,3 +270,16 @@ index bf7a710..aac4015 100644
  ')
  
  ########################################
+diff --git a/sanlock.te b/sanlock.te
+index 2059657..423ad5e 100644
+--- a/sanlock.te
++++ b/sanlock.te
+@@ -81,6 +81,8 @@ domain_use_interactive_fds(sanlock_t)
+ 
+ files_read_mnt_symlinks(sanlock_t)
+ 
++fs_rw_cephfs_files(sanlock_t)
++
+ storage_raw_rw_fixed_disk(sanlock_t)
+ 
+ dev_read_rand(sanlock_t)

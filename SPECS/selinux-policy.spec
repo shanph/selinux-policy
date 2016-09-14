@@ -19,7 +19,7 @@
 Summary: SELinux policy configuration
 Name: selinux-policy
 Version: 3.13.1
-Release: 60%{?dist}.7
+Release: 60%{?dist}.9
 License: GPLv2+
 Group: System Environment/Base
 Source: serefpolicy-%{version}.tgz
@@ -615,6 +615,22 @@ SELinux Reference policy mls base module.
 %endif
 
 %changelog
+* Thu Sep 01 2016 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-60.9
+- Dontaudit ldconfig read gluster lib files.
+Resolves: rhbz#1372182
+- Add interface glusterd_dontaudit_read_lib_dirs()
+Resolves: rhbz#1372182
+- Dontaudit Occasionally observing AVC's while running geo-rep automation
+Resolves: rhbz#1372182
+- Allow glusterd to manage socket files labeled as glusterd_brick_t.
+Resolves: rhbz#1372191
+
+* Wed Aug 10 2016 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-60.8
+- Add SELinux support for ceph filesystem.
+Resolves: rhbz#1365640
+- Allow sanlock service to read/write cephfs_t files
+Resolves: rhbz#1365640
+
 * Fri Jun 10 2016 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-60.7
 - Allow glusterd domain read krb5_keytab_t files.
 Resolves: rhbz#1344630

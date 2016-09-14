@@ -1,8 +1,34 @@
 diff --git a/policy/modules/kernel/filesystem.if b/policy/modules/kernel/filesystem.if
-index 2afd2f6..2fc80d1 100644
+index 2afd2f6..ebd9614 100644
 --- a/policy/modules/kernel/filesystem.if
 +++ b/policy/modules/kernel/filesystem.if
-@@ -2633,6 +2633,24 @@ interface(`fs_rw_hugetlbfs_files',`
+@@ -896,6 +896,25 @@ interface(`fs_mounton_cgroup', `
+ 
+ ########################################
+ ## <summary>
++##	Read and write ceph files.
++## </summary>
++## <param name="domain">
++##	<summary>
++##	Domain allowed access.
++##	</summary>
++## </param>
++#
++interface(`fs_rw_cephfs_files',`
++	gen_require(`
++		type cephfs_t;
++
++	')
++
++	rw_files_pattern($1, cephfs_t, cephfs_t)
++')
++
++########################################
++## <summary>
+ ##	Do not audit attempts to read
+ ##	dirs on a CIFS or SMB filesystem.
+ ## </summary>
+@@ -2633,6 +2652,24 @@ interface(`fs_rw_hugetlbfs_files',`
  
  ########################################
  ## <summary>
@@ -27,3 +53,34 @@ index 2afd2f6..2fc80d1 100644
  ##	Execute hugetlbfs files.
  ## </summary>
  ## <param name="domain">
+diff --git a/policy/modules/kernel/filesystem.te b/policy/modules/kernel/filesystem.te
+index 6ac60c3..e70716a 100644
+--- a/policy/modules/kernel/filesystem.te
++++ b/policy/modules/kernel/filesystem.te
+@@ -80,6 +80,11 @@ fs_type(capifs_t)
+ files_mountpoint(capifs_t)
+ genfscon capifs / gen_context(system_u:object_r:capifs_t,s0)
+ 
++type cephfs_t;
++fs_type(cephfs_t)
++files_mountpoint(cephfs_t)
++genfscon ceph / gen_context(system_u:object_r:cephfs_t,s0)
++
+ type cgroup_t alias cgroupfs_t;
+ fs_type(cgroup_t)
+ files_mountpoint(cgroup_t)
+diff --git a/policy/modules/system/libraries.te b/policy/modules/system/libraries.te
+index 1584203..544b8e3 100644
+--- a/policy/modules/system/libraries.te
++++ b/policy/modules/system/libraries.te
+@@ -150,6 +150,10 @@ optional_policy(`
+ ')
+ 
+ optional_policy(`
++	glusterd_dontaudit_read_lib_dirs(ldconfig_t)
++')
++
++optional_policy(`
+ 	gnome_append_generic_cache_files(ldconfig_t)
+ ')
+ 
