@@ -1,0 +1,32 @@
+From 90ff5d590a61c324d8c444426d5c1ffb93562c33 Mon Sep 17 00:00:00 2001
+From: Miroslav Grepl <mgrepl@redhat.com>
+Date: Thu, 18 Feb 2016 12:32:59 +0100
+Subject: [PATCH] Label /usr/libexec/rpm-ostreed as rpm_exec_t. BZ(1309075)
+
+If a user does atomic updates-testing rebase then he ends up with SELinux error:
+
+Receiving objects: 92% (3773/4069) 859.0 kB/s 99.6 MB
+error: fsetxattr: Invalid argument
+
+It happens because /usr/libexec/rpm-ostreed is not labeled correctly.
+
+Resolves: rhbz#1340542
+---
+ anaconda.fc | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/anaconda.fc b/anaconda.fc
+index 37d428c..fe35beb 100644
+--- a/anaconda.fc
++++ b/anaconda.fc
+@@ -6,6 +6,7 @@
+ /usr/bin/initial-setup  --  gen_context(system_u:object_r:install_exec_t,s0)
+ /usr/bin/ostree         --  gen_context(system_u:object_r:install_exec_t,s0)
+ /usr/bin/rpm-ostree     --  gen_context(system_u:object_r:install_exec_t,s0)
++/usr/libexec/rpm-ostreed --  gen_context(system_u:object_r:install_exec_t,s0)
+ 
+ /usr/bin/preupg.*   --  gen_context(system_u:object_r:preupgrade_exec_t,s0)
+ /var/lib/preupgrade(/.*)?   gen_context(system_u:object_r:preupgrade_data_t,s0)
+-- 
+2.5.5
+

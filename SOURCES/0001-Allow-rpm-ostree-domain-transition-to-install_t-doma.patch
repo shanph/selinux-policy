@@ -1,0 +1,28 @@
+From 98e8646ba15a6398f17439e451162fd6a32f0c25 Mon Sep 17 00:00:00 2001
+From: Lukas Vrabec <lvrabec@redhat.com>
+Date: Mon, 2 May 2016 13:42:20 +0200
+Subject: [PATCH] Allow rpm-ostree domain transition to install_t domain from
+ init_t. Resolves: rhbz#1340542
+
+---
+ policy/modules/system/init.te | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/policy/modules/system/init.te b/policy/modules/system/init.te
+index 4d8453d..71f1628 100644
+--- a/policy/modules/system/init.te
++++ b/policy/modules/system/init.te
+@@ -350,6 +350,10 @@ optional_policy(`
+ ')
+ 
+ optional_policy(`
++	anaconda_domtrans_install(init_t)
++')
++
++optional_policy(`
+ 	iscsi_read_lib_files(init_t)
+ 	iscsi_manage_lock(init_t)
+ ')
+-- 
+2.5.5
+
