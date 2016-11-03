@@ -13,23 +13,21 @@
 %if %{?BUILD_MLS:0}%{!?BUILD_MLS:1}
 %define BUILD_MLS 1
 %endif
-%define POLICYVER 29
-%define POLICYCOREUTILSVER 2.1.14-74
-%define CHECKPOLICYVER 2.1.12-3
+%define POLICYVER 30
+%define POLICYCOREUTILSVER 2.5
+%define CHECKPOLICYVER 2.5
+%define LIBSEMANAGEVER 2.5
 Summary: SELinux policy configuration
 Name: selinux-policy
 Version: 3.13.1
-Release: 60%{?dist}.9
+Release: 102%{?dist}
 License: GPLv2+
 Group: System Environment/Base
 Source: serefpolicy-%{version}.tgz
 patch: policy-rhel-7.1-base.patch
 patch1: policy-rhel-7.1-contrib.patch
-patch2: policy-RHEL-7.1-flask.patch
-patch3: policy-rhel-7.2-base.patch
-patch4: policy-rhel-7.2-contrib.patch
-patch5: policy-rhel-7.2.z-base.patch
-patch6: policy-rhel-7.2.z-contrib.patch
+patch2: policy-rhel-7.3-base.patch
+patch3: policy-rhel-7.3-contrib.patch
 Source1: modules-targeted-base.conf 
 Source31: modules-targeted-contrib.conf
 Source2: booleans-targeted.conf
@@ -52,9 +50,12 @@ Source23: users-targeted
 Source25: users-minimum
 Source26: file_contexts.subs_dist
 Source27: selinux-policy.conf
-Source28: permissivedomains.pp
+Source28: permissivedomains.cil
 Source29: serefpolicy-contrib-%{version}.tgz
 Source30: booleans.subs_dist
+
+# Provide rpm macros for packages installing SELinux modules
+Source102: rpm.macros
 
 Url: http://oss.tresys.com/repos/refpolicy/
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
@@ -62,9 +63,7 @@ BuildArch: noarch
 BuildRequires: python gawk checkpolicy >= %{CHECKPOLICYVER} m4 policycoreutils-devel >= %{POLICYCOREUTILSVER} bzip2 
 Requires(pre): policycoreutils >= %{POLICYCOREUTILSVER}
 Requires(post): /bin/awk /usr/bin/sha512sum
-
-%description 
-SELinux Base package
+Requires: libsemanage >= %{LIBSEMANAGEVER}
 
 %files 
 %defattr(-,root,root,-)
@@ -92,6 +91,7 @@ SELinux sandbox policy used for the policycoreutils-sandbox package
 
 %post sandbox
 rm -f /etc/selinux/*/modules/active/modules/sandbox.pp.disabled 2>/dev/null
+rm -f %{_sysconfdir}/selinux/*/active/modules/disabled/sandbox 2>/dev/null
 semodule -n -i /usr/share/selinux/packages/sandbox.pp
 if /usr/sbin/selinuxenabled ; then
     /usr/sbin/load_policy
@@ -117,8 +117,6 @@ SELinux policy development and man page package
 
 %files devel
 %defattr(-,root,root,-)
-%{_mandir}/man*/*
-%{_mandir}/ru/*/*
 %dir %{_usr}/share/selinux/devel
 %dir %{_usr}/share/selinux/devel/include
 %{_usr}/share/selinux/devel/include/*
@@ -144,6 +142,8 @@ SELinux policy documentation package
 
 %files doc
 %defattr(-,root,root,-)
+%{_mandir}/man*/*
+%{_mandir}/ru/*/*
 %doc %{_usr}/share/doc/%{name}
 %attr(755,root,root) %{_usr}/share/selinux/devel/policyhelp
 
@@ -167,37 +167,22 @@ make UNK_PERMS=%4 NAME=%1 TYPE=%2 DISTRO=%{distro} UBAC=n DIRECT_INITRC=%3 MONOL
 make validate UNK_PERMS=%4 NAME=%1 TYPE=%2 DISTRO=%{distro} UBAC=n DIRECT_INITRC=%3 MONOLITHIC=%{monolithic} MLS_CATS=1024 MCS_CATS=1024 SEMOD_EXP="/usr/bin/semodule_expand -a" modules \
 make UNK_PERMS=%4 NAME=%1 TYPE=%2 DISTRO=%{distro} UBAC=n DIRECT_INITRC=%3 MONOLITHIC=%{monolithic} DESTDIR=%{buildroot} MLS_CATS=1024 MCS_CATS=1024 install \
 make UNK_PERMS=%4 NAME=%1 TYPE=%2 DISTRO=%{distro} UBAC=n DIRECT_INITRC=%3 MONOLITHIC=%{monolithic} DESTDIR=%{buildroot} MLS_CATS=1024 MCS_CATS=1024 install-appconfig \
+make UNK_PERMS=%4 NAME=%1 TYPE=%2 DISTRO=%{distro} UBAC=n DIRECT_INITRC=%3 MONOLITHIC=%{monolithic} DESTDIR=%{buildroot} MLS_CATS=1024 MCS_CATS=1024 SEMODULE="semodule -p %{buildroot} -X 100 " load \
+%{__mkdir} -p %{buildroot}/%{_sysconfdir}/selinux/%1/active/modules/disabled \
 %{__mkdir} -p %{buildroot}/%{_sysconfdir}/selinux/%1/logins \
-%{__mkdir} -p %{buildroot}/%{_sysconfdir}/selinux/%1/policy \
-%{__mkdir} -p %{buildroot}/%{_sysconfdir}/selinux/%1/modules/active/modules \
-%{__mkdir} -p %{buildroot}/%{_sysconfdir}/selinux/%1/contexts/files \
-touch %{buildroot}/%{_sysconfdir}/selinux/%1/modules/semanage.read.LOCK \
-touch %{buildroot}/%{_sysconfdir}/selinux/%1/modules/semanage.trans.LOCK \
-rm -rf %{buildroot}%{_sysconfdir}/selinux/%1/booleans \
-touch %{buildroot}%{_sysconfdir}/selinux/%1/policy/policy.%{POLICYVER} \
 touch %{buildroot}%{_sysconfdir}/selinux/%1/contexts/files/file_contexts.subs \
 install -m0644 selinux_config/securetty_types-%1 %{buildroot}%{_sysconfdir}/selinux/%1/contexts/securetty_types \
 install -m0644 selinux_config/file_contexts.subs_dist %{buildroot}%{_sysconfdir}/selinux/%1/contexts/files \
 install -m0644 selinux_config/setrans-%1.conf %{buildroot}%{_sysconfdir}/selinux/%1/setrans.conf \
 install -m0644 selinux_config/customizable_types %{buildroot}%{_sysconfdir}/selinux/%1/contexts/customizable_types \
-touch %{buildroot}%{_sysconfdir}/selinux/%1/modules/active/seusers \
-touch %{buildroot}%{_sysconfdir}/selinux/%1/modules/active/file_contexts.local \
-touch %{buildroot}%{_sysconfdir}/selinux/%1/modules/active/nodes.local \
-touch %{buildroot}%{_sysconfdir}/selinux/%1/modules/active/users_extra.local \
-touch %{buildroot}%{_sysconfdir}/selinux/%1/modules/active/users.local \
-touch %{buildroot}%{_sysconfdir}/selinux/%1/modules/active/file_contexts.homedirs.bin \
-touch %{buildroot}%{_sysconfdir}/selinux/%1/modules/active/file_contexts.bin \
+touch %{buildroot}%{_sysconfdir}/selinux/%1/contexts/files/file_contexts.local \
+touch %{buildroot}%{_sysconfdir}/selinux/%1/contexts/files/file_contexts.local.bin \
+sefcontext_compile -o %{buildroot}%{_sysconfdir}/selinux/targeted/contexts/files/file_contexts.bin %{buildroot}%{_sysconfdir}/selinux/targeted/contexts/files/file_contexts \
 cp %{SOURCE30} %{buildroot}%{_sysconfdir}/selinux/%1 \
-bzip2 -c %{buildroot}/%{_usr}/share/selinux/%1/base.pp  > %{buildroot}/%{_sysconfdir}/selinux/%1/modules/active/base.pp \
-rm -f %{buildroot}/%{_usr}/share/selinux/%1/base.pp  \
-for i in %{buildroot}/%{_usr}/share/selinux/%1/*.pp; do bzip2 -c $i > %{buildroot}/%{_sysconfdir}/selinux/%1/modules/active/modules/`basename $i`; done \
 rm -f %{buildroot}/%{_usr}/share/selinux/%1/*pp*  \
-mkdir -p %{buildroot}%{_usr}/share/selinux/packages \
-/usr/sbin/semodule -s %1 -n -B -p %{buildroot}; \
 /usr/bin/sha512sum %{buildroot}%{_sysconfdir}/selinux/%1/policy/policy.%{POLICYVER} | cut -d' ' -f 1 > %{buildroot}%{_sysconfdir}/selinux/%1/.policy.sha512; \
 rm -rf %{buildroot}%{_sysconfdir}/selinux/%1/contexts/netfilter_contexts  \
 rm -rf %{buildroot}%{_sysconfdir}/selinux/%1/modules/active/policy.kern \
-ln -sf /etc/selinux/%1/policy/policy.%{POLICYVER}  %{buildroot}%{_sysconfdir}/selinux/%1/modules/active/policy.kern \
 %nil
 
 %define fileList() \
@@ -207,24 +192,13 @@ ln -sf /etc/selinux/%1/policy/policy.%{POLICYVER}  %{buildroot}%{_sysconfdir}/se
 %config(noreplace) %{_sysconfdir}/selinux/%1/setrans.conf \
 %config(noreplace) %verify(not md5 size mtime) %{_sysconfdir}/selinux/%1/seusers \
 %dir %{_sysconfdir}/selinux/%1/logins \
-%dir %{_sysconfdir}/selinux/%1/modules \
-%verify(not md5 size mtime) %{_sysconfdir}/selinux/%1/modules/semanage.read.LOCK \
-%verify(not md5 size mtime) %{_sysconfdir}/selinux/%1/modules/semanage.trans.LOCK \
-%dir %attr(700,root,root) %dir %{_sysconfdir}/selinux/%1/modules/active \
-%dir %{_sysconfdir}/selinux/%1/modules/active/modules \
-%verify(not md5 size mtime) %{_sysconfdir}/selinux/%1/modules/active/commit_num \
-%verify(not md5 size mtime) %{_sysconfdir}/selinux/%1/modules/active/base.pp \
-%verify(not md5 size mtime) %{_sysconfdir}/selinux/%1/modules/active/file_contexts \
-%verify(not md5 size mtime) %{_sysconfdir}/selinux/%1/modules/active/file_contexts.homedirs \
-%verify(not md5 size mtime) %{_sysconfdir}/selinux/%1/modules/active/file_contexts.template \
-%config(noreplace) %verify(not md5 size mtime) %{_sysconfdir}/selinux/%1/modules/active/seusers.final \
-%verify(not md5 size mtime) %{_sysconfdir}/selinux/%1/modules/active/netfilter_contexts \
-%config(noreplace) %verify(not md5 size mtime) %{_sysconfdir}/selinux/%1/modules/active/users_extra \
-%verify(not md5 size mtime) %{_sysconfdir}/selinux/%1/modules/active/homedir_template \
-%verify(not md5 size mtime) %{_sysconfdir}/selinux/%1/modules/active/policy.kern \
-%ghost %{_sysconfdir}/selinux/%1/modules/active/*.local \
-%ghost %{_sysconfdir}/selinux/%1/modules/active/*.bin \
-%ghost %{_sysconfdir}/selinux/%1/modules/active/seusers \
+%dir %{_sysconfdir}/selinux/%1/active \
+%verify(not md5 size mtime) %{_sysconfdir}/selinux/%1/semanage.read.LOCK \
+%verify(not md5 size mtime) %{_sysconfdir}/selinux/%1/semanage.trans.LOCK \
+%dir %attr(700,root,root) %dir %{_sysconfdir}/selinux/%1/active/modules \
+%dir %attr(700,root,root) %dir %{_sysconfdir}/selinux/%1/active/modules/100 \
+%dir %attr(700,root,root) %dir %{_sysconfdir}/selinux/%1/active/modules/disabled \
+%verify(not md5 size mtime) %{_sysconfdir}/selinux/%1/active/modules/100/base \
 %dir %{_sysconfdir}/selinux/%1/policy/ \
 %verify(not md5 size mtime) %{_sysconfdir}/selinux/%1/policy/policy.%{POLICYVER} \
 %{_sysconfdir}/selinux/%1/.policy.sha512 \
@@ -238,6 +212,7 @@ ln -sf /etc/selinux/%1/policy/policy.%{POLICYVER}  %{buildroot}%{_sysconfdir}/se
 %config %{_sysconfdir}/selinux/%1/contexts/virtual_image_context \
 %config %{_sysconfdir}/selinux/%1/contexts/lxc_contexts \
 %config %{_sysconfdir}/selinux/%1/contexts/systemd_contexts \
+%config %{_sysconfdir}/selinux/%1/contexts/snapperd_contexts \
 %config %{_sysconfdir}/selinux/%1/contexts/sepgsql_contexts \
 %config(noreplace) %{_sysconfdir}/selinux/%1/contexts/default_type \
 %config(noreplace) %{_sysconfdir}/selinux/%1/contexts/failsafe_context \
@@ -246,9 +221,17 @@ ln -sf /etc/selinux/%1/policy/policy.%{POLICYVER}  %{buildroot}%{_sysconfdir}/se
 %config(noreplace) %{_sysconfdir}/selinux/%1/contexts/userhelper_context \
 %dir %{_sysconfdir}/selinux/%1/contexts/files \
 %verify(not md5 size mtime) %{_sysconfdir}/selinux/%1/contexts/files/file_contexts \
+%verify(not md5 size mtime) %{_sysconfdir}/selinux/%1/contexts/files/file_contexts.bin \
 %verify(not md5 size mtime) %{_sysconfdir}/selinux/%1/contexts/files/file_contexts.homedirs \
-%ghost %{_sysconfdir}/selinux/%1/contexts/files/*.bin \
-%config(noreplace) %{_sysconfdir}/selinux/%1/contexts/files/file_contexts.local \
+%verify(not md5 size mtime) %{_sysconfdir}/selinux/%1/contexts/files/file_contexts.homedirs.bin \
+%verify(not md5 size mtime) %{_sysconfdir}/selinux/%1/active/commit_num \
+%verify(not md5 size mtime) %{_sysconfdir}/selinux/%1/active/users_extra \
+%verify(not md5 size mtime) %{_sysconfdir}/selinux/%1/active/homedir_template \
+%verify(not md5 size mtime) %{_sysconfdir}/selinux/%1/active/file_contexts \
+%verify(not md5 size mtime) %{_sysconfdir}/selinux/%1/active/policy.kern \
+%ghost %{_sysconfdir}/selinux/%1/contexts/files/*.local \
+%ghost %{_sysconfdir}/selinux/%1/contexts/files/*.local.bin \
+%ghost %{_sysconfdir}/selinux/%1/active/seusers \
 %config(noreplace) %{_sysconfdir}/selinux/%1/contexts/files/file_contexts.subs \
 %{_sysconfdir}/selinux/%1/contexts/files/file_contexts.subs_dist \
 %{_sysconfdir}/selinux/%1/booleans.subs_dist \
@@ -271,9 +254,6 @@ fi; \
 if /sbin/restorecon -e /run/media -R /root /var/log /var/run /etc/passwd* /etc/group* /etc/*shadow* 2> /dev/null;then \
     continue; \
 fi; \
-if /sbin/restorecon -R /home/*/.config 2> /dev/null;then \
-    continue; \
-fi;
 
 %define preInstall() \
 if [ $1 -ne 1 ] && [ -s /etc/selinux/config ]; then \
@@ -295,35 +275,66 @@ fi;
 
 %define postInstall() \
 . %{_sysconfdir}/selinux/config; \
-(cd /etc/selinux/%2/modules/active/modules; rm -f vbetool.pp l2tpd.pp shutdown.pp amavis.pp clamav.pp gnomeclock.pp nsplugin.pp matahari.pp xfs.pp kudzu.pp kerneloops.pp execmem.pp openoffice.pp ada.pp tzdata.pp hal.pp hotplug.pp howl.pp java.pp mono.pp moilscanner.pp gamin.pp audio_entropy.pp audioentropy.pp iscsid.pp polkit_auth.pp polkit.pp rtkit_daemon.pp ModemManager.pp telepathysofiasip.pp ethereal.pp passanger.pp qemu.pp qpidd.pp pyzor.pp razor.pp pki-selinux.pp phpfpm.pp consoletype.pp ctdbd.pp fcoemon.pp isnsd.pp rgmanager.pp corosync.pp aisexec.pp pacemaker.pp pkcsslotd.pp smstools.pp ) \
+#TODO: (cd /etc/selinux/%2/modules/active/modules; rm -f vbetool.pp l2tpd.pp shutdown.pp amavis.pp clamav.pp gnomeclock.pp nsplugin.pp matahari.pp xfs.pp kudzu.pp kerneloops.pp execmem.pp openoffice.pp ada.pp tzdata.pp hal.pp hotplug.pp howl.pp java.pp mono.pp moilscanner.pp gamin.pp audio_entropy.pp audioentropy.pp iscsid.pp polkit_auth.pp polkit.pp rtkit_daemon.pp ModemManager.pp telepathysofiasip.pp ethereal.pp passanger.pp qemu.pp qpidd.pp pyzor.pp razor.pp pki-selinux.pp phpfpm.pp consoletype.pp ctdbd.pp fcoemon.pp isnsd.pp rgmanager.pp corosync.pp aisexec.pp pacemaker.pp pkcsslotd.pp smstools.pp ) \
 if [ -e /etc/selinux/%2/.rebuild ]; then \
    rm /etc/selinux/%2/.rebuild; \
    /usr/sbin/semodule -B -n -s %2; \
 fi; \
 [ "${SELINUXTYPE}" == "%2" ] && selinuxenabled && load_policy; \
 if [ %1 -eq 1 ]; then \
-   /sbin/restorecon -R /root /var/log /run 2> /dev/null; \
+   /sbin/restorecon -R /root /var/log /run /etc/passwd* /etc/group* /etc/*shadow* 2> /dev/null; \
 else \
 %relabel %2 \
 fi;
 
 %define modulesList() \
-awk '$1 !~ "/^#/" && $2 == "=" && $3 == "module" { printf "%%s.pp ", $1 }' ./policy/modules-base.conf > %{buildroot}/%{_usr}/share/selinux/%1/modules-base.lst \
-awk '$1 !~ "/^#/" && $2 == "=" && $3 == "base" { printf "%%s.pp ", $1 }' ./policy/modules-base.conf > %{buildroot}/%{_usr}/share/selinux/%1/base.lst \
+awk '$1 !~ "/^#/" && $2 == "=" && $3 == "module" { printf "%%s ", $1 }' ./policy/modules-base.conf > %{buildroot}/%{_usr}/share/selinux/%1/modules-base.lst \
+awk '$1 !~ "/^#/" && $2 == "=" && $3 == "base" { printf "%%s ", $1 }' ./policy/modules-base.conf > %{buildroot}/%{_usr}/share/selinux/%1/base.lst \
 if [ -e ./policy/modules-contrib.conf ];then \
-	awk '$1 !~ "/^#/" && $2 == "=" && $3 == "module" { printf "%%s.pp ", $1 }' ./policy/modules-contrib.conf > %{buildroot}/%{_usr}/share/selinux/%1/modules-contrib.lst; \
+	awk '$1 !~ "/^#/" && $2 == "=" && $3 == "module" { printf "%%s ", $1 }' ./policy/modules-contrib.conf > %{buildroot}/%{_usr}/share/selinux/%1/modules-contrib.lst; \
 fi;
 
 %define nonBaseModulesList() \
 contrib_modules=`cat %{buildroot}/%{_usr}/share/selinux/%1/modules-contrib.lst` \
 base_modules=`cat %{buildroot}/%{_usr}/share/selinux/%1/modules-base.lst` \
 for i in $contrib_modules $base_modules; do \
-    if [ $i != "sandbox.pp" ];then \
-        echo "%verify(not md5 size mtime) /etc/selinux/%1/modules/active/modules/$i" >> %{buildroot}/%{_usr}/share/selinux/%1/nonbasemodules.lst \
+    if [ $i != "sandbox" ];then \
+        echo "%verify(not md5 size mtime) %{_sysconfdir}/selinux/%1/active/modules/100/$i" >> %{buildroot}/%{_usr}/share/selinux/%1/nonbasemodules.lst \
     fi; \
 done \
 if [ %1 != "mls" ];then \
     echo "%ghost /etc/selinux/%1/modules/active/modules/docker.pp" >> %{buildroot}/%{_usr}/share/selinux/%1/nonbasemodules.lst \
+fi;
+
+%define migrateStoreUpdateLocalChanges() \
+for local in booleans.local file_contexts.local ports.local users_extra.local users.local; do \
+    if [ -e /etc/selinux/%1/modules/active/$local ]; then \
+        touch /etc/selinux/%1/.rebuild \
+        install -D /etc/selinux/%1/modules/active/$local /etc/selinux/%1/active/$local \
+    fi \
+done \
+if [ -e /etc/selinux/%1/modules/active/seusers ]; then \
+    touch /etc/selinux/%1/.rebuild \
+    install -D /etc/selinux/%1/modules/active/seusers /etc/selinux/%1/active/seusers.local \
+fi;
+
+%define migrateStoreUpdateLocalPackages() \
+INSTALL_MODULES="" \
+for i in `find /etc/selinux/%1/modules/active/modules/ -name \*disabled 2> /dev/null`; do \
+    module=`basename $i | sed 's/\.pp\.disabled$//'` \
+    if [ -d /etc/selinux/%1/active/modules/100/$module ]; then \
+        touch /etc/selinux/%1/active/modules/disabled/$module \
+    fi \
+done \
+for i in `find /etc/selinux/%1/modules/active/modules/ -name \*.pp 2> /dev/null`; do \
+    module=`basename $i | sed 's/\.pp$//'` \
+    if [ ! -d /etc/selinux/%1/active/modules/100/$module ]; then \
+        INSTALL_MODULES="${INSTALL_MODULES} $i" \
+    fi \
+done \
+if [ -n "$INSTALL_MODULES" ]; then \
+    semodule -s %1 -n -X 400 -i $INSTALL_MODULES \
+    touch /etc/selinux/%1/.rebuild \
 fi;
 
 %description
@@ -334,24 +345,21 @@ Based off of reference policy: Checked out revision  2.20091117
 
 %prep 
 %setup -n serefpolicy-contrib-%{version} -q -b 29
-%patch4 -p1
-%patch6 -p1
+%patch3 -p1
 contrib_path=`pwd`
 %setup -n serefpolicy-%{version} -q
-%patch3 -p1
 %patch2 -p1
-%patch5 -p1
 refpolicy_path=`pwd`
 cp $contrib_path/* $refpolicy_path/policy/modules/contrib
 rm -rf $refpolicy_path/policy/modules/contrib/kubernetes.*
-rm -rf $refpolicy_path/policy/modules/contrib/docker.*
 
-%install
 mkdir selinux_config
 for i in %{SOURCE1} %{SOURCE2} %{SOURCE3} %{SOURCE4} %{SOURCE5} %{SOURCE6} %{SOURCE8} %{SOURCE14} %{SOURCE15} %{SOURCE17} %{SOURCE18} %{SOURCE19} %{SOURCE20} %{SOURCE21} %{SOURCE22} %{SOURCE23} %{SOURCE25} %{SOURCE26} %{SOURCE31} %{SOURCE32};do
  cp $i selinux_config
 done
 tar zxvf selinux_config/config.tgz
+
+%install
 # Build targeted policy
 %{__rm} -fR %{buildroot}
 mkdir -p %{buildroot}%{_sysconfdir}/selinux
@@ -363,18 +371,26 @@ cp %{SOURCE27} %{buildroot}%{_usr}/lib/tmpfiles.d/
 
 # Always create policy module package directories
 mkdir -p %{buildroot}%{_usr}/share/selinux/{targeted,mls,minimum,modules}/
+mkdir -p %{buildroot}%{_sysconfdir}/selinux/{targeted,mls,minimum,modules}/
+
+mkdir -p %{buildroot}%{_usr}/share/selinux/packages
 
 # Install devel
 make clean
 %if %{BUILD_TARGETED}
 # Build targeted policy
 # Commented out because only targeted ref policy currently builds
-mkdir -p %{buildroot}%{_usr}/share/selinux/targeted
-cp %{SOURCE28} %{buildroot}/%{_usr}/share/selinux/targeted
+cp %{SOURCE28} %{buildroot}/
 %makeCmds targeted mcs n allow
 %makeModulesConf targeted base contrib
 %installCmds targeted mcs n allow
-mv %{buildroot}/%{_sysconfdir}/selinux/targeted/modules/active/modules/sandbox.pp %{buildroot}/usr/share/selinux/packages
+# install permissivedomains.cil
+semodule -p %{buildroot} -X 100 -i %{buildroot}/permissivedomains.cil
+rm -rf %{buildroot}/permissivedomains.cil
+# recreate sandbox.pp
+rm -rf %{buildroot}%{_sysconfdir}/selinux/targeted/active/modules/100/sandbox
+make UNK_PERMS=%4 NAME=%1 TYPE=%2 DISTRO=%{distro} UBAC=n DIRECT_INITRC=%3 MONOLITHIC=%{monolithic} DESTDIR=%{buildroot} MLS_CATS=1024 MCS_CATS=1024 sandbox.pp
+mv sandbox.pp %{buildroot}/usr/share/selinux/packages/sandbox.pp
 %modulesList targeted 
 %nonBaseModulesList targeted
 %endif
@@ -383,11 +399,12 @@ mv %{buildroot}/%{_sysconfdir}/selinux/targeted/modules/active/modules/sandbox.p
 # Build minimum policy
 # Commented out because only minimum ref policy currently builds
 mkdir -p %{buildroot}%{_usr}/share/selinux/minimum
-cp %{SOURCE28} %{buildroot}/%{_usr}/share/selinux/minimum
+# cp %{SOURCE28} %{buildroot}/%{_usr}/share/selinux/minimum
 %makeCmds minimum mcs n allow
 %makeModulesConf targeted base contrib
 %installCmds minimum mcs n allow
 rm -f %{buildroot}/%{_sysconfdir}/selinux/minimum/modules/active/modules/sandbox.pp
+rm -rf %{buildroot}%{_sysconfdir}/selinux/minimum/active/modules/100/sandbox
 %modulesList minimum
 %nonBaseModulesList minimum
 %endif
@@ -414,14 +431,13 @@ echo  "xdg-open file:///usr/share/doc/selinux-policy/html/index.html"> %{buildro
 chmod +x %{buildroot}%{_usr}/share/selinux/devel/policyhelp
 /usr/bin/sepolicy manpage -a -p %{buildroot}/usr/share/man/man8/ -w -r %{buildroot}
 mkdir %{buildroot}%{_usr}/share/selinux/devel/html
-htmldir=`compgen -d %{buildroot}%{_usr}/share/man/man8/`
-mv ${htmldir}/* %{buildroot}%{_usr}/share/selinux/devel/html
-mv %{buildroot}%{_usr}/share/man/man8/index.html %{buildroot}%{_usr}/share/selinux/devel/html
+mv %{buildroot}%{_usr}/share/man/man8/*.html %{buildroot}%{_usr}/share/selinux/devel/html
 mv %{buildroot}%{_usr}/share/man/man8/style.css %{buildroot}%{_usr}/share/selinux/devel/html
-rm -rf ${htmldir}
 
 mkdir -p %{buildroot}%{_rpmconfigdir}/macros.d
-echo '%%_selinux_policy_version %{version}-%{release}' > %{buildroot}%{_rpmconfigdir}/macros.d/macros.selinux-policy
+install -m 644 %{SOURCE102} %{buildroot}%{_rpmconfigdir}/macros.d/macros.selinux-policy
+sed -i 's/SELINUXPOLICYVERSION/%{version}-%{release}/' %{buildroot}%{_rpmconfigdir}/macros.d/macros.selinux-policy
+
 
 rm -rf selinux_config
 %clean
@@ -451,9 +467,6 @@ SELINUXTYPE=targeted
      restorecon /etc/selinux/config 2> /dev/null || :
 else
      . /etc/selinux/config
-     # if first time update booleans.local needs to be copied to sandbox
-     [ -f /etc/selinux/${SELINUXTYPE}/booleans.local ] && mv /etc/selinux/${SELINUXTYPE}/booleans.local /etc/selinux/targeted/modules/active/
-     [ -f /etc/selinux/${SELINUXTYPE}/seusers ] && cp -f /etc/selinux/${SELINUXTYPE}/seusers /etc/selinux/${SELINUXTYPE}/modules/active/seusers
 fi
 exit 0
 
@@ -493,6 +506,10 @@ SELinux Reference policy targeted base module.
 %preInstall targeted
 
 %post targeted
+if [ -e /etc/selinux/targeted/modules/active/base.pp ]; then
+    %migrateStoreUpdateLocalChanges targeted
+    %migrateStoreUpdateLocalPackages targeted
+fi
 %postInstall $1 targeted
 exit 0
 
@@ -504,16 +521,12 @@ exit 0
 rm -f /etc/selinux/*/modules/active/modules/sandbox.pp.disabled 2>/dev/null
 exit 0
 
-%triggerpostun targeted -- selinux-policy-targeted < 3.12.1-75
-restorecon -R -p /home
-exit 0
-
 %files targeted -f %{buildroot}/%{_usr}/share/selinux/targeted/nonbasemodules.lst
 %defattr(-,root,root,-)
 %config(noreplace) %{_sysconfdir}/selinux/targeted/contexts/users/unconfined_u
 %config(noreplace) %{_sysconfdir}/selinux/targeted/contexts/users/sysadm_u 
 %fileList targeted
-%verify(not md5 size mtime) %{_sysconfdir}/selinux/targeted/modules/active/modules/permissivedomains.pp
+%verify(not md5 size mtime) %{_sysconfdir}/selinux/targeted/active/modules/100/permissivedomains
 %{_usr}/share/selinux/targeted/base.lst
 %{_usr}/share/selinux/targeted/modules-base.lst
 %{_usr}/share/selinux/targeted/modules-contrib.lst
@@ -537,19 +550,26 @@ SELinux Reference policy minimum base module.
 %pre minimum
 %preInstall minimum
 if [ $1 -ne 1 ]; then
-   /usr/sbin/semodule -s minimum -l 2>/dev/null | awk '{ if ($3 != "Disabled") print $1; }' > /usr/share/selinux/minimum/instmodules.lst
+    /usr/sbin/semodule -s minimum --list-modules=full | awk '{ if ($4 != "disabled") print $2; }' > /usr/share/selinux/minimum/instmodules.lst
 fi
 
 %post minimum
+if [ -e /etc/selinux/minimum/modules/active/base.pp ]; then
+    %migrateStoreUpdateLocalChanges minimum
+    %migrateStoreUpdateLocalPackages minimum
+fi
 contribpackages=`cat /usr/share/selinux/minimum/modules-contrib.lst`
 basepackages=`cat /usr/share/selinux/minimum/modules-base.lst`
-(cd /etc/selinux/minimum/modules/active/modules; rm -f pkcsslotd.pp)
+#TODO: (cd /etc/selinux/minimum/modules/active/modules; rm -f pkcsslotd.pp)
+if [ ! -d /etc/selinux/minimum/active/modules/disabled ]; then
+    mkdir /etc/selinux/minimum/active/modules/disabled
+fi
 if [ $1 -eq 1 ]; then
 for p in $contribpackages; do
-	touch /etc/selinux/minimum/modules/active/modules/$p.disabled
+    touch /etc/selinux/minimum/active/modules/disabled/$p
 done
-for p in $basepackages apache.pp dbus.pp inetd.pp kerberos.pp mta.pp nis.pp; do
-	rm -f /etc/selinux/minimum/modules/active/modules/$p.disabled
+for p in $basepackages apache dbus inetd kerberos mta nis; do
+    rm -f /etc/selinux/minimum/active/modules/disabled/$p
 done
 /usr/sbin/semanage import -S minimum -f - << __eof
 login -m  -s unconfined_u -r s0-s0:c0.c1023 __default__
@@ -560,13 +580,19 @@ __eof
 else
 instpackages=`cat /usr/share/selinux/minimum/instmodules.lst`
 for p in $contribpackages; do
-    touch /etc/selinux/minimum/modules/active/modules/$p.disabled
+    touch /etc/selinux/minimum/active/modules/disabled/$p
 done
 for p in $instpackages apache dbus inetd kerberos mta nis; do
-    rm -f /etc/selinux/minimum/modules/active/modules/$p.pp.disabled
+    rm -f /etc/selinux/minimum/active/modules/disabled/$p
 done
 /usr/sbin/semodule -B -s minimum
 %relabel minimum
+fi
+exit 0
+
+%triggerpostun minimum -- selinux-policy-minimum < 3.13.1-66
+if [ `ls -A /etc/selinux/minimum/active/modules/disabled/` ]; then
+    rm -f /etc/selinux/minimum/active/modules/disabled/*
 fi
 exit 0
 
@@ -575,7 +601,7 @@ exit 0
 %config(noreplace) %{_sysconfdir}/selinux/minimum/contexts/users/unconfined_u
 %config(noreplace) %{_sysconfdir}/selinux/minimum/contexts/users/sysadm_u
 %fileList minimum
-%verify(not md5 size mtime) %{_sysconfdir}/selinux/minimum/modules/active/modules/permissivedomains.pp
+# %verify(not md5 size mtime) %{_sysconfdir}/selinux/minimum/modules/active/modules/permissivedomains.pp
 %{_usr}/share/selinux/minimum/base.lst
 %{_usr}/share/selinux/minimum/modules-base.lst
 %{_usr}/share/selinux/minimum/modules-contrib.lst
@@ -602,7 +628,12 @@ SELinux Reference policy mls base module.
 %preInstall mls
 
 %post mls 
+if [ -e /etc/selinux/mls/modules/active/base.pp ]; then
+    %migrateStoreUpdateLocalChanges mls
+    %migrateStoreUpdateLocalPackages mls
+fi
 %postInstall $1 mls
+
 
 %files mls -f %{buildroot}/%{_usr}/share/selinux/mls/nonbasemodules.lst
 %defattr(-,root,root,-)
@@ -615,60 +646,829 @@ SELinux Reference policy mls base module.
 %endif
 
 %changelog
-* Thu Sep 01 2016 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-60.9
-- Dontaudit ldconfig read gluster lib files.
-Resolves: rhbz#1372182
-- Add interface glusterd_dontaudit_read_lib_dirs()
-Resolves: rhbz#1372182
-- Dontaudit Occasionally observing AVC's while running geo-rep automation
-Resolves: rhbz#1372182
-- Allow glusterd to manage socket files labeled as glusterd_brick_t.
-Resolves: rhbz#1372191
+* Tue Sep 27 2016 Dan Walsh <dwalsh@redhat.com> - 3.13.1-102
+- Add virt_sandbox_use_nfs -> virt_use_nfs boolean substitution.
+Resolves: rhbz#1355783
 
-* Wed Aug 10 2016 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-60.8
-- Add SELinux support for ceph filesystem.
-Resolves: rhbz#1365640
-- Allow sanlock service to read/write cephfs_t files
-Resolves: rhbz#1365640
+* Tue Sep 27 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-101
+- Allow pcp_pmcd_t domain transition to lvm_t Add capability kill and sys_ptrace to pcp_pmlogger_t
+Resolves: rhbz#1309883
 
-* Fri Jun 10 2016 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-60.7
+* Wed Sep 21 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-100
+- Allow ftp daemon to manage apache_user_content
+Resolves: rhbz#1097775
+- Label /etc/sysconfig/oracleasm as oracleasm_conf_t
+Resolves: rhbz#1331383
+- Allow oracleasm to rw inherited fixed disk device
+Resolves: rhbz#1331383
+- Allow collectd to connect on unix_stream_socket
+Resolves: rhbz#1377259
+
+* Wed Sep 14 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-99
+- Allow iscsid create netlink iscsid sockets.
+Resolves: rhbz#1358266
+- Improve regexp for power_unit_file_t files. To catch just systemd power unit files.
+Resolves: rhbz#1375462
+
+* Tue Sep 13 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-98
+- Update oracleasm SELinux module that can manage oracleasmfs_t blk files. Add dac_override cap to oracleasm_t domain.
+Resolves: rhbz#1331383
+- Add few rules to pcp SELinux module to make ti able to start pcp_pmlogger service
+Resolves: rhbz#1206525
+
+* Tue Sep 06 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-97
+- Add oracleasm_conf_t type and allow oracleasm_t to create /dev/oracleasm
+Resolves: rhbz#1331383
+- Label /usr/share/pcp/lib/pmie as pmie_exec_t and /usr/share/pcp/lib/pmlogger as pmlogger_exec_t
+Resolves: rhbz#1206525
+- Allow mdadm_t to getattr all device nodes
+Resolves: rhbz#1365171
+- Add interface dbus_dontaudit_stream_connect_system_dbusd()
+Resolves:rhbz#1052880
+- Add virt_stub_* interfaces for docker policy which is no longer a part of our base policy.
+Resolves: rhbz#1372705
+- Allow guest-set-user-passwd to set users password.
+Resolves: rhbz#1369693
+- Allow samdbox domains to use msg class
+Resolves: rhbz#1372677
+- Allow domains using kerberos to read also kerberos config dirs
+Resolves: rhbz#1368492
+- Allow svirt_sandbox_domains to r/w onload sockets
+Resolves: rhbz#1342930
+- Add interface fs_manage_oracleasm()
+Resolves: rhbz#1331383
+- Label /dev/kfd as hsa_device_t
+Resolves: rhbz#1373488
+- Update seutil_manage_file_contexts() interface that caller domain can also manage file_context_t dirs
+Resolves: rhbz#1368097
+- Add interface to write to nsfs inodes
+Resolves: rhbz#1372705
+- Allow systemd services to use PrivateNetwork feature
+Resolves: rhbz#1372705
+- Add a type and genfscon for nsfs.
+Resolves: rhbz#1372705
+- Allow run sulogin_t in range mls_systemlow-mls_systemhigh.
+Resolves: rhbz#1290400
+
+* Wed Aug 31 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-96
+- Allow arpwatch to create netlink netfilter sockets. Resolves: rhbz#1358261
+- Fix file context for /etc/pki/pki-tomcat/ca/
+- new interface oddjob_mkhomedir_entrypoint()
+- Move label for /var/lib/docker/vfs/ to proper SELinux module
+- Allow mdadm to get attributes from all devices.
+- Label /etc/puppetlabs as puppet_etc_t.
+- Allow systemd-machined to communicate to lxc container using dbus
+- Allow systemd_resolved to send dbus msgs to userdomains Resolves: rhbz#1236579
+- Allow systemd-resolved to read network sysctls Resolves: rhbz#1236579
+- Allow systemd_resolved to connect on system bus. Resolves: rhbz#1236579
+- Make entrypoint oddjob_mkhomedir_exec_t for unconfined_t
+- Label all files in /dev/oracleasmfs/ as oracleasmfs_t Resolves: rhbz#1331383
+
+* Tue Aug 23 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-95
+- Label /etc/pki/pki-tomcat/ca/ as pki_tomcat_cert_t
+Resolves:rhbz#1366915
+- Allow certmonger to manage all systemd unit files
+Resolves:rhbz#1366915
+- Grant certmonger "chown" capability
+Resolves:rhbz#1366915
+- Allow ipa_helper_t stream connect to dirsrv_t domain
+Resolves: rhbz#1368418
+- Update oracleasm SELinux module
+Resolves: rhbz#1331383
+- label /var/lib/kubelet as svirt_sandbox_file_t
+Resolves: rhbz#1369159
+- Add few interfaces to cloudform.if file
+Resolves: rhbz#1367834
+- Label /var/run/corosync-qnetd and /var/run/corosync-qdevice as cluster_var_run_t. Note: corosync policy is now par of rhcs module
+Resolves: rhbz#1347514
+- Allow krb5kdc_t to read krb4kdc_conf_t dirs.
+Resolves: rhbz#1368492
+- Update networkmanager_filetrans_named_content() interface to allow source domain to create also temad dir in /var/run.
+Resolves: rhbz#1365653
+- Allow teamd running as NetworkManager_t to access netlink_generic_socket to allow multiple network interfaces to be teamed together.
+Resolves: rhbz#1365653
+- Label /dev/oracleasmfs as oracleasmfs_t. Add few interfaces related to oracleasmfs_t type
+Resolves: rhbz#1331383
+- A new version of cloud-init that supports the effort to provision RHEL Atomic on Microsoft Azure requires some a new rules that allows dhclient/dhclient hooks to call cloud-init.
+Resolves: rhbz#1367834
+- Allow iptables to creating netlink generic sockets.
+Resolves: rhbz#1364359
+
+* Wed Aug 17 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-94
+- Allow ipmievd domain to create lock files in /var/lock/subsys/
+Resolves:rhbz#1349058
+- Update policy for ipmievd daemon.
+Resolves:rhbz#1349058
+- Dontaudit hyperkvp to getattr on non security files.
+Resolves: rhbz#1349356
+- Label /run/corosync-qdevice and /run/corosync-qnetd as corosync_var_run_t
+Resolves: rhbz#1347514
+- Fixed lsm SELinux module
+- Add sys_admin capability to sbd domain
+Resolves: rhbz#1322725
+- Allow vdagent to comunnicate with systemd-logind via dbus
+Resolves: rhbz#1366731
+- Allow lsmd_plugin_t domain to create fixed_disk device.
+Resolves: rhbz#1238066
+- Allow opendnssec domain to create and manage own tmp dirs/files
+Resolves: rhbz#1366649
+- Allow opendnssec domain to read system state
+Resolves: rhbz#1366649
+- Update opendnssec_manage_config() interface to allow caller domain also manage opendnssec_conf_t dirs
+Resolves: rhbz#1366649
+- Allow rasdaemon to mount/unmount tracefs filesystem.
+Resolves: rhbz#1364380
+- Label /usr/libexec/iptables/iptables.init as iptables_exec_t Allow iptables creating lock file in /var/lock/subsys/
+Resolves: rhbz#1367520
+- Modify interface den_read_nvme() to allow also read nvme_device_t block files.
+Resolves: rhbz#1362564
+- Label /var/run/storaged as lvm_var_run_t.
+Resolves: rhbz#1264390
+- Allow unconfineduser to run ipa_helper_t.
+Resolves: rhbz#1361636
+
+* Wed Aug 10 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-93
+- Dontaudit mock to write to generic certs.
+Resolves: rhbz#1271209
+- Add labeling for corosync-qdevice and corosync-qnetd daemons, to run as cluster_t
+Resolves: rhbz#1347514
+- Revert "Label corosync-qnetd and corosync-qdevice as corosync_t domain"
+- Allow modemmanager to write to systemd inhibit pipes
+Resolves: rhbz#1365214
+- Label corosync-qnetd and corosync-qdevice as corosync_t domain
+Resolves: rhbz#1347514
+- Allow ipa_helper to read network state
+Resolves: rhbz#1361636
+- Label oddjob_reqiest as oddjob_exec_t
+Resolves: rhbz#1361636
+- Add interface oddjob_run()
+Resolves: rhbz#1361636
+- Allow modemmanager chat with systemd_logind via dbus
+Resolves: rhbz#1362273
+- Allow NetworkManager chat with puppetagent via dbus
+Resolves: rhbz#1363989
+- Allow NetworkManager chat with kdumpctl via dbus
+Resolves: rhbz#1363977
+- Allow sbd send msgs to syslog Allow sbd create dgram sockets. Allow sbd to communicate with kernel via dgram socket Allow sbd r/w kernel sysctls.
+Resolves: rhbz#1322725
+- Allow ipmievd_t domain to re-create ipmi devices Label /usr/libexec/openipmi-helper as ipmievd_exec_t
+Resolves: rhbz#1349058
+- Allow rasdaemon to use tracefs filesystem.
+Resolves: rhbz#1364380
+- Fix typo bug in dirsrv policy
+- Some logrotate scripts run su and then su runs unix_chkpwd. Allow logrotate_t domain to check passwd.
+Resolves: rhbz#1283134
+- Add ipc_lock capability to sssd domain. Allow sssd connect to http_cache_t
+Resolves: rhbz#1362688
+- Allow dirsrv to read dirsrv_share_t content
+Resolves: rhbz#1363662
+- Allow virtlogd_t to append svirt_image_t files.
+Resolves: rhbz#1358140
+- Allow hypervkvp domain to read hugetlbfs dir/files.
+Resolves: rhbz#1349356
+- Allow mdadm daemon to read nvme_device_t blk files
+Resolves: rhbz#1362564
+- Allow selinuxusers and unconfineduser to run oddjob_request
+Resolves: rhbz#1361636
+- Allow sshd server to acces to Crypto Express 4 (CEX4) devices.
+Resolves: rhbz#1362539
+- Fix labeling issue in init.fc file. Path /usr/lib/systemd/fedora-* changed to /usr/lib/systemd/rhel-*.
+Resolves: rhbz#1363769
+- Fix typo in device interfaces
+Resolves: rhbz#1349058
+- Add interfaces for managing ipmi devices
+Resolves: rhbz#1349058
+- Add interfaces to allow mounting/umounting tracefs filesystem
+Resolves: rhbz#1364380
+- Add interfaces to allow rw tracefs filesystem
+Resolves: rhbz#1364380
+- Add interface dev_read_nvme() to allow reading Non-Volatile Memory Host Controller devices.
+Resolves: rhbz#1362564
+- Label /sys/kernel/debug/tracing filesystem
+Resolves: rhbz#1364380
+- Allow sshd setcap capability. This is needed due to latest changes in sshd
+Resolves: rhbz#1357857
+
+* Thu Jul 28 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-92
+- Dontaudit mock_build_t can list all ptys.
+Resolves: rhbz#1271209
+- Allow ftpd_t to mamange userhome data without any boolean.
+Resolves: rhbz#1097775
+- Add logrotate permissions for creating netlink selinux sockets.
+Resolves: rhbz#1283134
+- Allow lsmd_plugin_t to exec ldconfig.
+Resolves: rhbz#1238066
+- Allow vnstatd domain to read /sys/class/net/ files
+Resolves: rhbz#1358243
+- Remove duplicate allow rules in spamassassin SELinux module
+Resolves:rhbz#1358175
+- Allow spamc_t and spamd_t domains create .spamassassin file in user homedirs
+Resolves:rhbz#1358175
+- Allow sshd setcap capability. This is needed due to latest changes in sshd
+Resolves: rhbz#1357857
+- Add new MLS attribute to allow relabeling objects higher than system low. This exception is needed for package managers when processing sensitive data.
+Resolves: rhbz#1330464
+- Allow gnome-keyring also manage user_tmp_t sockets.
+Resolves: rhbz#1257057
+- corecmd: Remove fcontext for /etc/sysconfig/libvirtd
+Resolves:rhbz#1351382
+
+* Tue Jul 19 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-91
+- Allow ipa_dnskey domain to search cache dirs
+Resolves: rhbz#1350957
+
+* Tue Jul 19 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-90
+- Allow ipa-dnskey read system state.
+Reasolves: rhbz#1350957
+- Allow dogtag-ipa-ca-renew-agent-submit labeled as certmonger_t to create /var/log/ipa/renew.log file
+Resolves: rhbz#1350957
+
+* Mon Jul 18 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-89
+- Allow firewalld to manage net_conf_t files.
+Resolves:rhbz#1304723
+- Allow logrotate read logs inside containers.
+Resolves: rhbz#1303514
+- Allow sssd to getattr on fs_t
+Resolves: rhbz#1356082
+- Allow opendnssec domain to manage bind chace files
+Resolves: rhbz#1350957
+- Fix typo in rhsmcertd  policy module
+Resolves: rhbz#1329475
+- Allow systemd to get status of systemd-logind daemon
+Resolves: rhbz#1356141
+- Label more ndctl devices not just ndctl0
+Resolves: rhbz#1355809
+
+* Thu Jul 14 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-88
+- Allow rhsmcertd to copy certs into /etc/docker/cert.d
+- Add interface docker_rw_config()
+Resolves: rhbz#1344500
+- Fix logrotate fc file to label also /var/lib/logrotate/ dir as logrotate_var_lib_t
+Resolves: rhbz#1355632
+- Allow rhsmcertd to read network sysctls
+Resolves: rhbz#1329475
+- Label /var/log/graphite-web dir as httpd_log_t
+Resolves: rhbz#1310898
+- Allow mock to use generic ptys
+Resolves: rhbz#1271209
+- Allow adcli running as sssd_t to write krb5.keytab file.
+Resolves: rhbz#1356082
+- Allow openvswitch connect to openvswitch_port_t type.
+Resolves: rhbz#1335024
+- Add SELinux policy for opendnssec service.
+Resolves: rhbz#1350957
+- Create new SELinux type for /usr/libexec/ipa/ipa-dnskeysyncd
+Resolves: rhbz#1350957
+- label /dev/ndctl0 device as nvram_device_t
+Resolves: rhbz#1355809
+
+* Mon Jul 11 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-87
+- Allow lttng tools to block suspending
+Resolves: rhbz#1256374
+- Allow creation of vpnaas in openstack
+Resolves: rhbz#1352710
+- virt: add strict policy for virtlogd daemon
+Resolves:rhbz#1311606
+- Update makefile to support snapperd_contexts file
+Resolves: rhbz#1352681
+
+* Fri Jul 08 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-86
+- Allow udev to manage systemd-hwdb files
+- Add interface systemd_hwdb_manage_config()
+Resolves: rhbz#1350756
+- Fix paths to infiniband devices. This allows use more then two infiniband interfaces.
+Resolves: rhbz#1210263
+
+* Thu Jul 07 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-85
+- Allow virtual machines to rw infiniband devices.
+Resolves: rhbz#1210263
+- Allow opensm daemon to rw infiniband_mgmt_device_t
+Resolves: rhbz#1210263
+- Allow systemd_hwdb_t to relabel /etc/udev/hwdb.bin file.
+Resolves: rhbz#1350756
+- Make label for new infiniband_mgmt deivices
+Resolves: rhbz#1210263
+
+* Tue Jul 05 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-84
+- Fix typo in brltty SELinux module
+- Add new SELinux module sbd
+Resolves: rhbz#1322725
+- Allow pcp dmcache metrics collection
+Resolves: rhbz#1309883
+- Allow pkcs_slotd_t to create dir in /var/lock Add label pkcs_slotd_log_t
+Resolves: rhbz#1350782
+- Allow openvpn to create sock files labeled as openvpn_var_run_t
+Resolves: rhbz#1328246
+- Allow hypervkvp daemon to getattr on  all filesystem types.
+Resolves: rhbz#1349356
+- Allow firewalld to create net_conf_t files
+Resolves: rhbz#1304723
+- Allow mock to use lvm
+Resolves: rhbz#1271209
+- Allow keepalived to create netlink generic sockets.
+Resolves: rhbz#1349809
+- Allow mirromanager creating log files in /tmp
+Resolves:rhbz#1328818
+- Rename few modules to make it consistent with source files
+Resolves: rhbz#1351445
+- Allow vmtools_t to transition to rpm_script domain
+Resolves: rhbz#1342119
+- Allow nsd daemon to manage nsd_conf_t dirs and files
+Resolves: rhbz#1349791
+- Allow cluster to create dirs in /var/run labeled as cluster_var_run_t
+Resolves: rhbz#1346900
+- Allow sssd read also sssd_conf_t dirs
+Resolves: rhbz#1350535
+- Dontaudit su_role_template interface to getattr /proc/kcore Dontaudit su_role_template interface to getattr /dev/initctl
+Resolves: rhbz#1086240
+- Add interface lvm_getattr_exec_files()
+Resolves: rhbz#1271209
+- Fix typo Compliling vs. Compiling
+Resolves: rhbz#1351445
+
+* Wed Jun 29 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-83
+- Allow krb5kdc_t to communicate with sssd
+Resolves: rhbz#1319933
+- Allow prosody to bind on prosody ports
+Resolves: rhbz#1304664
+- Add dac_override caps for fail2ban-client
+Resolves: rhbz#1316678
+- dontaudit read access for svirt_t on the file /var/db/nscd/group
+Resolves: rhbz#1301637
+- Allow inetd child process to communicate via dbus with systemd-logind
+Resolves: rhbz#1333726
+- Add label for brltty log file
+Resolves: rhbz#1328818
+- Allow dspam to read the passwd file
+Resolves: rhbz#1286020
+- Allow snort_t to communicate with sssd
+Resolves: rhbz#1284908
+- svirt_sandbox_domains need to be able to execmod for badly built libraries.
+Resolves: rhbz#1206339
+- Add policy for lttng-tools package.
+Resolves: rhbz#1256374
+- Make mirrormanager as application domain.
+Resolves: rhbz#1328234
+- Add support for the default lttng-sessiond port - tcp/5345.  This port is used by LTTng 2.x central tracing registry session daemon.
+- Add prosody ports
+Resolves: rhbz#1304664
+- Allow sssd read also sssd_conf_t dirs
+Resolves: rhbz#1350535
+
+* Tue Jun 28 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-82
+- Label /var/lib/softhsm as named_cache_t. Allow named_t to manage named_cache_t dirs.
+Resolves:rhbz#1331315
+- Label named-pkcs11 binary as named_exec_t.
+Resolves: rhbz#1331315
+- Allow glusterd daemon to get systemd status
+Resolves: rhbz#1321785
+- Allow logrotate dbus-chat with system_logind daemon
+Resolves: rhbz#1283134
+- Allow pcp_pmlogger to read kernel network state Allow pcp_pmcd to read cron pid files
+Resolves: rhbz#1336211
+- Add interface cron_read_pid_files()
+Resolves: rhbz#1336211
+- Allow pcp_pmlogger to create unix dgram sockets
+Resolves: rhbz#1336211
+- Add hwloc-dump-hwdata SELinux policy
+Resolves: rhbz#1344054
+- Remove non-existing jabberd_spool_t() interface and add new jabbertd_var_spool_t.
+Resolves: rhbz#1121171
+- Remove non-existing interface salk_resetd_systemctl() and replace it with sanlock_systemctl_sanlk_resetd()
+Resolves: rhbz#1259764
+- Create label for openhpid log files. 
+esolves: rhbz#1259764
+- Label /var/lib/ganglia as httpd_var_lib_t
+Resolves: rhbz#1260536
+- Allow firewalld_t to create entries in net_conf_t dirs.
+Resolves: rhbz#1304723
+- Allow journalctl to read syslogd_var_run_t files. This allows to staff_t and sysadm_t to read journals
+Resolves: rhbz#1288255
+- Include patch from distgit repo: policy-RHEL-7.1-flask.patch.
+Resolves: rhbz#1329560
+- Update refpolicy to handle hwloc
+Resolves: rhbz#1344054
+- Label /etc/dhcp/scripts dir as bin_t
+- Allow sysadm_role to run journalctl_t domain. This allows sysadm user to read journals.
+Resolves: rhbz#1288255
+
+* Wed Jun 22 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-81
+- Allow firewalld_t to create entries in net_conf_t dirs.
+Resolves: rhbz#1304723
+- Allow journalctl to read syslogd_var_run_t files. This allows to staff_t and sysadm_t to read journals
+Resolves: rhbz#1288255
+- Allow mongod log to syslog.
+Resolves: rhbz#1306995
+- Allow rhsmcertd connect to port tcp 9090
+Resolves: rhbz#1337319
+- Label for /bin/mail(x) was removed but /usr/bin/mail(x) not. This path is also needed to remove. 
+Resolves: rhbz#1262483
+Resolves: rhbz#1277506
+- Label /usr/libexec/mimedefang-wrapper as spamd_exec_t.
+Resolves: rhbz#1301516
+- Add new boolean spamd_update_can_network.
+Resolves: rhbz#1305469
+- Allow rhsmcertd connect to tcp netport_port_t
+Resolves: rhbz#1329475
+- Fix SELinux context for /usr/share/mirrormanager/server/mirrormanager to Label all binaries under dir as mirrormanager_exec_t.
+Resolves: rhbz#1328234
+- Allow prosody to bind to fac_restore tcp port.
+Resolves: rhbz#1321787
+- Allow ninfod to read raw packets
+Resolves: rhbz#1317964
+- Allow pegasus get attributes from qemu binary files.
+Resolves: rhbz#1260835
+- Allow pegasus get attributes from qemu binary files.
+Resolves: rhbz#1271159
+- Allow tuned to use policykit. This change is required by cockpit.
+Resolves: rhbz#1346464
+- Allow conman_t to read dir with conman_unconfined_script_t binary files.
+Resolves: rhbz#1297323
+- Allow pegasus to read /proc/sysinfo.
+Resolves: rhbz#1265883
+- Allow sysadm_role to run journalctl_t domain. This allows sysadm user to read journals.
+Resolves: rhbz#1288255
+- Label tcp ports:16379, 26379 as redis_port_t
+Resolves: rhbz#1348471
+- Allow systemd to relabel /var and /var/lib directories during boot.
+- Add files_relabel_var_dirs() and files_relabel_var_dirs() interfaces.
+- Add files_relabelto_var_lib_dirs() interface.
+- Label tcp port 2004 as mailbox_port_t.
+Resolves: rhbz#1332843
+- Label tcp and udp port 5582 as fac_restore_port_t
+Resolves: rhbz#1321787
+- Allow sysadm_t user to run postgresql-setup.
+Resolves: rhbz#1282543
+- Allow sysadm_t user to dbus chat with oddjob_t. This allows confined admin run oddjob mkhomedirfor script.
+Resolves: rhbz#1297480
+- Update netlink socket classes.
+
+* Thu Jun 16 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-80
+- Allow conman to kill conman_unconfined_script.
+Resolves: rhbz#1297323
+- Make conman_unconfined_script_t as init_system_domain.
+Resolves:rhbz#1297323
+- Allow init dbus chat with apmd.
+Resolves:rhbz#995898
+- Patch /var/lib/rpm is symlink to /usr/share/rpm on Atomic, due to this change we need to label also /usr/share/rpm as rpm_var_lib_t.
+Resolves: rhbz#1233252
+- Dontaudit xguest_gkeyringd_t stream connect to system_dbusd_t
+Resolves: rhbz#1052880
+- Add mediawiki rules to proper scope
+Resolves: rhbz#1301186
+- Dontaudit xguest_gkeyringd_t stream connect to system_dbusd_t
+Resolves: rhbz#1052880
+- Allow mysqld_safe to inherit rlimit information from mysqld
+Resolves: rhbz#1323673
+- Allow collectd_t to stream connect to postgresql.
+Resolves: rhbz#1344056
+- Allow mediawiki-script to read /etc/passwd file.
+Resolves: rhbz#1301186
+- Add filetrans rule that NetworkManager_t can create net_conf_t files in /etc.
+Resolves: rhbz#1344505
+- Add labels for mediawiki123
+Resolves: rhbz#1293872
+- Fix label for all fence_scsi_check scripts
+- Allow ip netns to mounton root fs and unmount proc_t fs.
+Resolves: rhbz#1343776
+Resolves: rhbz#1286851
+- Allow sysadm_t to run newaliases command.
+Resolves: rhbz#1344828
+- Add interface sysnet_filetrans_named_net_conf()
+Resolves: rhbz#1344505
+
+* Mon Jun 13 2016 Petr Lautrbach <plautrba@redhat.com> - 3.13.1-79
+- Fix several issues related to the SELinux Userspace changes
+
+* Thu Jun 09 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-78
 - Allow glusterd domain read krb5_keytab_t files.
-Resolves: rhbz#1344630
+Resolves: rhbz#1343929
+- Fix typo in files_setattr_non_security_dirs.
+Resolves: rhbz#1115987
 
-* Fri May 27 2016 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-60.6
+* Thu Jun 09 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-77
+- Allow tmpreaper_t to read/setattr all non_security_file_type dirs
+Resolves: rhbz#1115987
+- Allow firewalld to create firewalld_var_run_t directory.
+Resolves: rhbz#1304723
+- Add interface firewalld_read_pid_files()
+Resolves: rhbz#1304723
+- Label /usr/libexec/rpm-ostreed as rpm_exec_t.
+Resolves: rhbz#1340542
+- Allow sanlock service to read/write cephfs_t files.
+Resolves: rhbz#1315332
+- Fixed to make SELinux work with docker and prctl(NO_NEW_PRIVS)
+- Added missing docker interfaces:  - docker_typebounds  - docker_entrypoint
+Resolves: rhbz#1236580
+- Add interface files_setattr_non_security_dirs()
+Resolves: rhbz#1115987
+- Add support for onloadfs
+- Allow iptables to read firewalld pid files.
+Resolves: rhbz#1304723
+- Add SELinux support for ceph filesystem.
+Resolves: rhbz#1315332
+- Fixed to make SELinux work with docker and prctl(NO_NEW_PRIVS)
+Resolves: rhbz#1236580
+
+* Mon Jun 06 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-76
+- Fixed to make SELinux work with docker and prctl(NO_NEW_PRIVS)
+- Added missing docker interfaces:  - docker_typebounds  - docker_entrypoint
+Resolves: rhbz#1236580
+- New interfaces needed for systemd-machinectl
+Resolves: rhbz#1236580
+- New interfaces needed by systemd-machine
+Resolves: rhbz#1236580
+- Add interface allowing sending and receiving messages from virt over dbus.
+Resolves: rhbz#1236580
+- Backport docker policy from Fedora.
+Related: #1303123
+Resolves: #1341257
+- Allow NetworkManager_t and policykit_t read access to systemd-machined pid files.
+Resolves: rhbz#1236580
+- Fixed to make SELinux work with docker and prctl(NO_NEW_PRIVS)
+- Added interfaces needed by new docker policy.
+Related: rhbz#1303123
+- Add support for systemd-machined daemon
+Resolves: rhbz#1236580
+- Allow rpm-ostree domain transition to install_t domain from init_t.
+Resolves: rhbz#1340542
+
+* Tue May 31 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-75
+- dnsmasq: allow NetworkManager to control dnsmasq via D-Bus
+Resolves: rhbz#1336722
+- Directory Server (389-ds-base) has been updated to use systemd-ask-password. In order to function correctly we need the following added to dirsrv.te
+Resolves: rhbz#1333198
+- sftpd_* booleans are functionless these days.
+Resolves: rhbz#1335656
+- Label /var/log/ganesha.log as gluster_log_t Allow glusterd_t domain to create glusterd_log_t files. Label /var/run/ganesha.pid as gluster_var_run_t.
+Resolves: rhbz#1335828
 - Allow ganesha-ha.sh script running under unconfined_t domain communicate with glusterd_t domains via dbus.
-Resolves:#1340365
+Resolves: rhbz#1336760
+- Allow ganesha daemon labeled as glusterd_t create /var/lib/nfs/ganesha dir labeled as var_lib_nfs_t.
+Resolves: rhbz#1336737
+- Label /usr/libexec/storaged/storaged as lvm_exec_t to run storaged daemon in lvm_t SELinux domain.
+Resolves: rhbz#1264390
+- Allow systemd_hostanmed_t to read /proc/sysinfo labeled as sysctl_t.
+Resolves: rhbz#1337061
+- Revert "Allow all domains some process flags."
+Resolves: rhbz#1303644
+- Revert "Remove setrlimit to all domains."
+Resolves: rhbz#1303644
+- Label /usr/sbin/xrdp* files as bin_t
+Resolves: rhbz#1276777
+- Add mls support for some db classes
+Resolves: rhbz#1303651
+- Allow systemd_resolved_t to check if ipv6 is disabled.
+Resolves: rhbz#1236579
+- Allow systemd_resolved to read systemd_networkd run files.
+Resolves: rhbz#1236579
 
-* Mon May 16 2016 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-60.5
+* Mon May 23 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-74
+- Allow ganesha-ha.sh script running under unconfined_t domain communicate with glusterd_t domains via dbus.
+Resolves: rhbz#1336760
+- Allow ganesha daemon labeled as glusterd_t create /var/lib/nfs/ganesha dir labeled as var_lib_nfs_t.
+Resolves: rhbz#1336737
+
+* Mon May 16 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-73
+- Allow logwatch to domtrans to postqueue
+Resolves: rhbz#1331542
 - Label /var/log/ganesha.log as gluster_log_t
 - Allow glusterd_t domain to create glusterd_log_t files.
 - Label /var/run/ganesha.pid as gluster_var_run_t.
-Resolves: rhbz#1333903
+Resolves: rhbz#1335828
+- Allow zabbix to connect to postgresql port
+Resolves: rhbz#1330479
+- Add userdom_destroy_unpriv_user_shared_mem() interface.
+Related: rhbz#1306403
+- systemd-logind remove all IPC objects owned by a user on a logout. This covers also SysV memory. This change allows to destroy unpriviledged user SysV shared memory segments.
+Resolves: rhbz#1306403
 
-* Mon May 09 2016 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-60.4
-- Label /usr/bin/ganesha.nfsd as glusterd_exec_t to run ganesha as glusterd_t.
-- Allow glusterd_t stream connect to rpbind_t.
-- Allow cluster_t to create symlink /var/lib/nfs labeled as var_lib_nfs_t.
-- Add interface rpc_filetrans_var_lib_nfs_content()
-- Add new boolean: rpcd_use_fusefs to allow rpcd daemon use fusefs.
-Resolves: rhbz#1333875
-Resolves: rhbz#1333903
+* Mon May 16 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-72
+- We need to restore contexts on /etc/passwd*,/etc/group*,/etc/*shadow* during install phase to get proper labeling for these files until selinux-policy pkgs are installed.
+Resolves: rhbz#1333952
 
-* Wed Jan 27 2016 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-60.3
-- Allow openvswitch domain capability sys_rawio
-Resolves: rhbz#1299405
+* Tue May 10 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-71
+- Add interface glusterd_dontaudit_read_lib_dirs()
+Resolves: rhbz#1295680
+- Dontaudit Occasionally observing AVC's while running geo-rep automation
+Resolves: rhbz#1295680
+- Allow glusterd to manage socket files labeled as glusterd_brick_t.
+Resolves: rhbz#1331561
+- Create new apache content template for files stored in user homedir. This change is needed to make working booleans: - httpd_enable_homedirs - httpd_read_user_content 
+Resolves: rhbz#1246522
+- Allow stunnel create log files. 
+Resolves: rhbz#1296851
+- Label tcp port 8181 as intermapper_port_t.
+Resolves: rhbz#1334783
+- Label tcp/udp port 2024 as xinuexpansion4_port_t
+Resolves: rhbz#1334783
+- Label tcp port 7002 as afs_pt_port_t Label tcp/udp port 2023 as xinuexpansion3_port_t
+Resolves: rhbz#1334783
+- Dontaudit ldconfig read gluster lib files.
+Resolves: rhbz#1295680
+- Add interface auth_use_nsswitch() to systemd_domain_template.
+Resolves: rhbz#1236579
 
-* Tue Jan 26 2016 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-60.2
+* Tue May 03 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-70
+- Label /usr/bin/ganesha.nfsd as glusterd_exec_t to run ganesha as glusterd_t. Allow glusterd_t stream connect to rpbind_t. Allow cluster_t to create symlink /var/lib/nfs labeled as var_lib_nfs_t. Add interface rpc_filetrans_var_lib_nfs_content() Add new boolean: rpcd_use_fusefs to allow rpcd daemon use fusefs.
+ Resolves: rhbz#1312809
+ Resolves: rhbz#1323947
+- Allow dbus chat between httpd_t and oddjob_t. Resolves: rhbz#1324144
+- Label /usr/libexec/ipa/oddjob/org.freeipa.server.conncheck as ipa_helper_exec_t.
+Resolves: rhbz#1324144
+- Label /var/log/ipareplica-conncheck.log file as ipa_log_t Allow ipa_helper_t domain to manage logs labeledas ipa_log_t Allow ipa_helper_t to connect on http and kerberos_passwd ports.
+Resolves: rhbz#1324144
+- Allow prosody to listen on port 5000 for mod_proxy65.
+Resolves: rhbz#1316918
+- Allow pcp_pmcd_t domain to manage docker lib files. This rule is needed to allow pcp to collect container information when SELinux is enabled.
+Resolves: rhbz#1309454
+
+* Wed Apr 27 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-69
+- Allow runnig php7 in fpm mode. From selinux-policy side, we need to allow httpd to read/write hugetlbfs.
+Resolves: rhbz#1319442
+- Allow openvswitch daemons to run under openvswitch Linux user instead of root. This change needs allow set capabilities: chwon, setgid, setuid, setpcap.
+Resolves: rhbz#1296640
+- Remove ftpd_home_dir() boolean from distro policy. Reason is that we cannot make this working due to m4 macro language limits.
+Resolves: rhbz#1097775
+- /bin/mailx is labeled sendmail_exec_t, and enters the sendmail_t domain on execution.  If /usr/sbin/sendmail does not have its own domain to transition to, and is not one of several products whose behavior is allowed by the sendmail_t policy, execution will fail. In this case we need to label /bin/mailx as bin_t.
+Resolves: rhbz#1262483
+- Allow nsd daemon to create log file in /var/log as nsd_log_t
+Resolves: rhbz#1293140
+- Sanlock policy update.   - New sub-domain for sanlk-reset daemon
+Resolves: rhbz#1212324
+- Label all run tgtd files, not just socket files
+Resolves: rhbz#1280280
+- Label all run tgtd files, not just socket files.
+Resolves: rhbz#1280280
+- Allow prosody to stream connect to sasl. This will allow using cyrus authentication in prosody.
+Resolves: rhbz#1321049
+- unbound wants to use ephemeral ports as a default configuration. Allow to use also udp sockets.
+Resolves: rhbz#1318224
+- Allow prosody to listen on port 5000 for mod_proxy65.
+Resolves: rhbz#1316918
+- Allow targetd to read/write to /dev/mapper/control device.
+Resolves: rhbz#1063714
+- Allow KDM to get status about power services. This change allow kdm to be able do shutdown.
+Resolves: rhbz#1316724
+- Allow systemd-resolved daemon creating netlink_route sockets.
+Resolves:rhbz#1236579
+- Allow systemd_resolved_t to read /etc/passwd file. Allow systemd_resolved_t to write to kmsg_device_t when 'systemd.log_target=kmsg' option is used
+Resolves: rhbz#1065362
+- Label /etc/selinux/(minimum|mls|targeted)/active/ as semanage_store_t
+Resolves: rhbz#1321943
+- Label all nvidia binaries as xserver_exec_t
+Resolves: rhbz#1322283
+
+* Wed Mar 23 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-68
+- Create new permissivedomains CIL module and make it active.
+Resolves: rhbz#1320451
+- Add support for new mock location - /usr/libexec/mock/mock.
+Resolves: rhbz#1271209
+- Allow bitlee to create bitlee_var_t dirs.
+Resolves: rhbz#1268651
+- Allow CIM provider to read sssd public files.
+Resolves: rhbz#1263339
+- Fix some broken interfaces in distro policy.
+Resolves: rhbz#1121171
+- Allow power button to shutdown the laptop.
+Resolves: rhbz#995898
+- Allow lsm plugins to create named fixed disks.
+Resolves: rhbz#1238066
+- Add default labeling for /etc/Pegasus/cimserver_current.conf. It is a correct patch instead of the current /etc/Pegasus/pegasus_current.confResolves: rhbz#1278777
+- Allow hyperv domains to rw hyperv devices.
+Resolves: rhbz#1309361
+- Label /var/www/html(/.*)?/wp_backups(/.*)? as httpd_sys_rw_content_t.Resolves: rhbz#1246780
+- Create conman_unconfined_script_t type for conman script stored in /use/share/conman/exec/
+Resolves: rhbz#1297323
+- Fix rule definitions for httpd_can_sendmail boolean. We need to distinguish between base and contrib.
+- Add support for /dev/mptctl device used to check RAID status.
+ Resolves: rhbz#1258029
+- Create hyperv* devices and create rw interfaces for this devices.
+Resolves: rhbz#1309361
+- Add fixes for selinux userspace moving the policy store to /var/lib/selinux.
+- Remove optional else block for dhcp ping
+
+* Thu Mar 17 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-67
+- Allow rsync_export_all_ro boolean to read also non_auth_dirs/files/symlinks.
+Resolves: rhbz#1263770
+- Fix context of "/usr/share/nginx/html".
+Resolves: rhbz#1261857
+- Allow pmdaapache labeled as pcp_pmcd_t access to port 80 for apache diagnostics
+Resolves: rhbz#1270344
+- Allow pmlogger to create pmlogger.primary.socket link file.
+ Resolves: rhbz#1270344
+- Label nagios scripts as httpd_sys_script_exec_t.
+Resolves: rhbz#1260306
+- Add dontaudit interface for kdumpctl_tmp_t
+Resolves: rhbz#1156442
+- Allow mdadm read files in EFI partition.
+Resolves: rhbz#1291801
+- Allow nsd_t to bind on nsf_control tcp port. Allow nsd_crond_t to read nsd pid.
+Resolves: rhbz#1293140
+- Label some new nsd binaries as nsd_exec_t Allow nsd domain net_admin cap. Create label nsd_tmp_t for nsd tmp files/dirs
+Resolves: rhbz#1293140
+- Add filename transition that /etc/princap will be created with cupsd_rw_etc_t label in cups_filetrans_named_content() interface.
+Resolves: rhbz#1265102
+- Add missing labeling for /usr/libexec/abrt-hook-ccpp.
+Resolves: rhbz#1213409
+- Allow pcp_pmie and pcp_pmlogger to read all domains state.
+Resolves: rhbz#1206525
+- Label /etc/redis-sentinel.conf as redis_conf_t. Allow redis_t write to redis_conf_t. Allow redis_t to connect on redis tcp port.
+Resolves: rhbz#1275246
+- cockpit has grown content in /var/run directory
+Resolves: rhbz#1279429
+- Allow collectd setgid capability
+Resolves:#1310898
+- Remove declaration of empty booleans in virt policy.
+Resolves: rhbz#1103153
+- Fix typo in drbd policy
+- Add new drbd file type: drbd_var_run_t. Allow drbd_t to manage drbd_var_run_t files/dirs. Allow drbd_t create drbd_tmp_t files in /tmp.
+Resolves: rhbz#1134883
+- Label /etc/ctdb/events.d/* as ctdb_exec_t. Allow ctdbd_t to setattr on ctdbd_exec_t files.
+Resolves: rhbz#1293788
+- Allow abrt-hook-ccpp to get attributes of all processes because of core_pattern.
+Resolves: rhbz#1254188
+- Allow abrt_t to read sysctl_net_t files.
+Resolves: rhbz#1254188
+- The ABRT coredump handler has code to emulate default core file creation The handler runs in a separate process with abrt_dump_oops_t SELinux process type. abrt-hook-ccpp also saves the core dump file in the very same way as kernel does and a user can specify CWD location for a coredump. abrt-hook-ccpp has been made as a SELinux aware apps to create this coredumps with correct labeling and with this commit the policy rules have been updated to allow access all non security files on a system.
+- Allow abrt-hook-ccpp to getattr on all executables.
+- Allow setuid/setgid capabilities for abrt-hook-ccpp.
+ Resolves: rhbz#1254188
+- abrt-hook-ccpp needs to have setfscreate access because it is SELinux aware and compute a target labeling.
+ Resolves: rhbz#1254188
+- Allow abrt-hook-ccpp to change SELinux user identity for created objects.
+ Resolves: rhbz#1254188
+- Dontaudit write access to inherited kdumpctl tmp files.
+ Resolves: rbhz#1156442
+- Add interface to allow reading files in efivarfs - contains Linux Kernel configuration options for UEFI systems (UEFI Runtime Variables)
+ Resolves: rhbz#1291801
+- Label 8952 tcp port as nsd_control.
+ Resolves: rhbz#1293140
+- Allow ipsec to use pam.
+ Resolves: rhbz#1315700
+- Allow to log out to gdm after screen was resized in session via vdagent.
+Resolves: rhbz#1249020
+- Allow setrans daemon to read /proc/meminfo.
+ Resolves: rhbz#1316804
+- Allow systemd_networkd_t to write kmsg, when kernel was started with following params: systemd.debug systemd.log_level=debug systemd.log_target=kmsg
+Resolves: rhbz#1298151
+- Label tcp port 5355 as llmnr-> Link-Local Multicast Name Resolution
+Resolves: rhbz#1236579
+- Add new selinux policy for systemd-resolved dawmon.
+Resolves: rhbz#1236579
+- Add interface ssh_getattr_server_keys() interface.
+Resolves: rhbz#1306197
+- Allow run sshd-keygen on second boot if first boot fails after some reason and content is not syncedon the disk. These changes are reflecting this commit in sshd. http://pkgs.fedoraproject.org/cgit/rpms/openssh.git/commit/?id=af94f46861844cbd6ba4162115039bebcc8f78ba rhbz#1299106
+Resolves: rhbz#1306197
+- Allow systemd_notify_t to write to kmsg_device_t when 'systemd.log_target=kmsg' option is used.
+Resolves: rhbz#1309417
+- Remove bin_t label for /etc/ctdb/events.d/. We need to label this scripts as ctdb_exec_t.
+Resolves: rhbz#1293788
+
+* Thu Mar 17 2016 Petr Lautrbach <plautrba@redhat.com> - 3.13.1-66
+- Prepare selinux-policy package for userspace release 2016-02-23. Resolves: rhbz#1305982
+
+* Tue Mar 08 2016 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-65
+- Allow sending dbus msgs between firewalld and system_cronjob domains. Resolves: rhbz#1284902
+- Allow zabbix-agentd to connect to following tcp sockets. One of zabbix-agentd functions is get service status of ftp,http,innd,pop,smtp protocols.
+Resolves:  rhbz#1242506
+- Add new boolean tmpreaper_use_cifs() to allow tmpreaper to run on local directories being shared with Samba.
+Resolves: rhbz#1284972
+- Add support for systemd-hwdb daemon.
+ Resolves: rhbz#1257940
+- Add interface fs_setattr_cifs_dirs().
+ Resolves: rhbz#1284972
+
+* Mon Feb 29 2016 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-64
+- Add new SELinux policy fo targetd daemon.
+Resolves: rhbz#1063714
+- Add new SELinux policy fo ipmievd daemon.
+Resolves: rhbz#1083031
+- Add new SELinux policy fo hsqldb daemon.
+Resolves: rhbz#1083171
+- Add new SELinux policy for blkmapd daemon.
+Resolves: rhbz#1072997
+- Allow p11-child to connect to apache ports.
+- Label /usr/sbin/lvmlockd binary file as lvm_exec_t.
+Resolves: rhbz#1278028
+- Add interface "lvm_manage_lock" to lvm policy.
+Resolves: rhbz#1063714
+
+* Wed Jan 27 2016 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-63
+- Allow openvswitch domain capability sys_rawio.
+Resolves: rhbz#1278495
+
+* Tue Jan 26 2016 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-62
+- Allow openvswitch to manage hugetlfs files and dirs.
+Resolves: rhbz#1278495
 - Add fs_manage_hugetlbfs_files() interface.
-Resolves: rhbz#1299405
-- Allow openvswitch to manage hugetlfs files and dirs
-Resolves: rhbz#1299405
+Resolves: rhbz#1278495
 
-* Mon Jan 25 2016 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-60.1
-- Allow openvswitch read/write hugetlb filesystem.
-Resolves: rhbz#1299405
+* Tue Jan 12 2016 Lukas Vrabec <lvrabec@redhat.com> 3.13.1-61
 - Allow smbcontrol domain to send sigchld to ctdbd domain.
-Resolves: rhbz#1301522
+Resolves: #1293784
+- Allow openvswitch read/write hugetlb filesystem.
+Resolves: #1278495
 
 * Wed Oct 14 2015 Miroslav Grepl <mgrepl@redhat.com> 3.13.1-60
 Allow hypervvssd to list all mountpoints to have VSS live backup working correctly.

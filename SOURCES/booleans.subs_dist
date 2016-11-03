@@ -56,3 +56,4 @@ condor_domain_can_network_connect condor_tcp_network_connect
 icecast_connect_any icecast_use_any_tcp_ports
 named_bind_http_port named_tcp_bind_http_port
 puppet_manage_all_files puppetagent_manage_all_files 
+virt_sandbox_use_nfs virt_use_nfs

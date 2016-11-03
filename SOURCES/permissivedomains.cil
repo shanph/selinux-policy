@@ -1,0 +1,25 @@
+(roleattributeset cil_gen_require system_r)
+(optional permissivedomains_optional_2
+    (typeattributeset cil_gen_require blkmapd_t)
+    (typepermissive blkmapd_t)
+)
+(optional permissivedomains_optional_3
+    (typeattributeset cil_gen_require hsqldb_t)
+    (typepermissive hsqldb_t)
+)
+(optional permissivedomains_optional_4
+    (typeattributeset cil_gen_require ipmievd_t)
+    (typepermissive ipmievd_t)
+)
+(optional permissivedomains_optional_5
+    (typeattributeset cil_gen_require targetd_t)
+    (typepermissive targetd_t)
+)
+(optional permissivedomains_optional_6
+    (typeattributeset cil_gen_require systemd_hwdb_t)
+    (typepermissive systemd_hwdb_t)
+)
+(optional permissivedomains_optional_7
+    (typeattributeset cil_gen_require sanlk_resetd_t)
+    (typepermissive sanlk_resetd_t)
+)
