@@ -20,7 +20,7 @@
 Summary: SELinux policy configuration
 Name: selinux-policy
 Version: 3.13.1
-Release: 102%{?dist}
+Release: 102%{?dist}.4
 License: GPLv2+
 Group: System Environment/Base
 Source: serefpolicy-%{version}.tgz
@@ -28,6 +28,7 @@ patch: policy-rhel-7.1-base.patch
 patch1: policy-rhel-7.1-contrib.patch
 patch2: policy-rhel-7.3-base.patch
 patch3: policy-rhel-7.3-contrib.patch
+patch4: glusterd-snapshot-creation-fdc66.patch
 Source1: modules-targeted-base.conf 
 Source31: modules-targeted-contrib.conf
 Source2: booleans-targeted.conf
@@ -56,6 +57,10 @@ Source30: booleans.subs_dist
 
 # Provide rpm macros for packages installing SELinux modules
 Source102: rpm.macros
+# Migrate local SELinux policy changes on first boot after update to new userspace
+# This is needed for systems which doesn't use rpm for updates
+Source110: selinux-policy-migrate-local-changes.sh
+Source111: selinux-policy-migrate-local-changes@.service
 
 Url: http://oss.tresys.com/repos/refpolicy/
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
@@ -241,7 +246,12 @@ rm -rf %{buildroot}%{_sysconfdir}/selinux/%1/modules/active/policy.kern \
 %config(noreplace) %{_sysconfdir}/selinux/%1/contexts/users/guest_u \
 %config(noreplace) %{_sysconfdir}/selinux/%1/contexts/users/xguest_u \
 %config(noreplace) %{_sysconfdir}/selinux/%1/contexts/users/user_u \
-%config(noreplace) %{_sysconfdir}/selinux/%1/contexts/users/staff_u
+%config(noreplace) %{_sysconfdir}/selinux/%1/contexts/users/staff_u \
+%{_libexecdir}/selinux/selinux-policy-migrate-local-changes.sh \
+%{_unitdir}/selinux-policy-migrate-local-changes@.service \
+%{_unitdir}/basic.target.wants/selinux-policy-migrate-local-changes@%1.service \
+%nil
+
 
 %define relabel() \
 . %{_sysconfdir}/selinux/config; \
@@ -306,36 +316,13 @@ if [ %1 != "mls" ];then \
     echo "%ghost /etc/selinux/%1/modules/active/modules/docker.pp" >> %{buildroot}/%{_usr}/share/selinux/%1/nonbasemodules.lst \
 fi;
 
-%define migrateStoreUpdateLocalChanges() \
-for local in booleans.local file_contexts.local ports.local users_extra.local users.local; do \
-    if [ -e /etc/selinux/%1/modules/active/$local ]; then \
-        touch /etc/selinux/%1/.rebuild \
-        install -D /etc/selinux/%1/modules/active/$local /etc/selinux/%1/active/$local \
-    fi \
-done \
-if [ -e /etc/selinux/%1/modules/active/seusers ]; then \
-    touch /etc/selinux/%1/.rebuild \
-    install -D /etc/selinux/%1/modules/active/seusers /etc/selinux/%1/active/seusers.local \
-fi;
-
-%define migrateStoreUpdateLocalPackages() \
-INSTALL_MODULES="" \
-for i in `find /etc/selinux/%1/modules/active/modules/ -name \*disabled 2> /dev/null`; do \
-    module=`basename $i | sed 's/\.pp\.disabled$//'` \
-    if [ -d /etc/selinux/%1/active/modules/100/$module ]; then \
-        touch /etc/selinux/%1/active/modules/disabled/$module \
-    fi \
-done \
-for i in `find /etc/selinux/%1/modules/active/modules/ -name \*.pp 2> /dev/null`; do \
-    module=`basename $i | sed 's/\.pp$//'` \
-    if [ ! -d /etc/selinux/%1/active/modules/100/$module ]; then \
-        INSTALL_MODULES="${INSTALL_MODULES} $i" \
-    fi \
-done \
-if [ -n "$INSTALL_MODULES" ]; then \
-    semodule -s %1 -n -X 400 -i $INSTALL_MODULES \
-    touch /etc/selinux/%1/.rebuild \
-fi;
+%define installMigrateLocalChangesFiles() \
+mkdir -p %{buildroot}/%{_libexecdir}/selinux/ \
+install -p -m 755 %{SOURCE110} %{buildroot}/%{_libexecdir}/selinux/ \
+mkdir   -m 755 -p %{buildroot}/%{_unitdir}/basic.target.wants/ \
+install -m 644 -p %{SOURCE111} %{buildroot}/%{_unitdir}/ \
+ln -s ../selinux-policy-migrate-local-changes@.service %{buildroot}/%{_unitdir}/basic.target.wants/selinux-policy-migrate-local-changes@%1.service \
+%nil
 
 %description
 SELinux Reference Policy - modular.
@@ -346,6 +333,7 @@ Based off of reference policy: Checked out revision  2.20091117
 %prep 
 %setup -n serefpolicy-contrib-%{version} -q -b 29
 %patch3 -p1
+%patch4 -p1
 contrib_path=`pwd`
 %setup -n serefpolicy-%{version} -q
 %patch2 -p1
@@ -393,6 +381,8 @@ make UNK_PERMS=%4 NAME=%1 TYPE=%2 DISTRO=%{distro} UBAC=n DIRECT_INITRC=%3 MONOL
 mv sandbox.pp %{buildroot}/usr/share/selinux/packages/sandbox.pp
 %modulesList targeted 
 %nonBaseModulesList targeted
+%installMigrateLocalChangesFiles targeted
+
 %endif
 
 %if %{BUILD_MINIMUM}
@@ -407,6 +397,7 @@ rm -f %{buildroot}/%{_sysconfdir}/selinux/minimum/modules/active/modules/sandbox
 rm -rf %{buildroot}%{_sysconfdir}/selinux/minimum/active/modules/100/sandbox
 %modulesList minimum
 %nonBaseModulesList minimum
+%installMigrateLocalChangesFiles minimum
 %endif
 
 %if %{BUILD_MLS}
@@ -416,6 +407,7 @@ rm -rf %{buildroot}%{_sysconfdir}/selinux/minimum/active/modules/100/sandbox
 %installCmds mls mls n deny
 %modulesList mls
 %nonBaseModulesList mls
+%installMigrateLocalChangesFiles mls
 %endif
 
 mkdir -p %{buildroot}%{_mandir}
@@ -507,8 +499,7 @@ SELinux Reference policy targeted base module.
 
 %post targeted
 if [ -e /etc/selinux/targeted/modules/active/base.pp ]; then
-    %migrateStoreUpdateLocalChanges targeted
-    %migrateStoreUpdateLocalPackages targeted
+    %{_libexecdir}/selinux/selinux-policy-migrate-local-changes.sh targeted
 fi
 %postInstall $1 targeted
 exit 0
@@ -555,8 +546,7 @@ fi
 
 %post minimum
 if [ -e /etc/selinux/minimum/modules/active/base.pp ]; then
-    %migrateStoreUpdateLocalChanges minimum
-    %migrateStoreUpdateLocalPackages minimum
+    %{_libexecdir}/selinux/selinux-policy-migrate-local-changes.sh minimum
 fi
 contribpackages=`cat /usr/share/selinux/minimum/modules-contrib.lst`
 basepackages=`cat /usr/share/selinux/minimum/modules-base.lst`
@@ -629,8 +619,7 @@ SELinux Reference policy mls base module.
 
 %post mls 
 if [ -e /etc/selinux/mls/modules/active/base.pp ]; then
-    %migrateStoreUpdateLocalChanges mls
-    %migrateStoreUpdateLocalPackages mls
+    %{_libexecdir}/selinux/selinux-policy-migrate-local-changes.sh mls
 fi
 %postInstall $1 mls
 
@@ -646,6 +635,24 @@ fi
 %endif
 
 %changelog
+* Wed Oct 19 2016 Miroslav Grepl <mgrepl@redhat.com> - 3.13.1-102.4
+- Allow GlusterFS with RDMA transport to be started correctly. It requires ipc_lock capability together with rw permission on rdma_cm device.
+Resolves:#1386620
+- Allow glusterd to get attributes on /sys/kernel/config directory.
+Resolves:#1386621
+
+* Wed Oct 12 2016 Petr Lautrbach <plautrba@redhat.com> - 3.13.1-102.3
+- Use selinux-policy-migrate-local-changes.sh instead of migrateStore* macros
+Resolves: rhbz#1383450
+- Add selinux-policy-migrate-local-changes service
+Resolves: rhbz#1383450
+
+* Fri Sep 30 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-102.1
+- Allow sssd_selinux_manager_t to manage also dir class.
+Resolves: rhbz#1380687
+- Add interface seutil_manage_default_contexts_dirs()
+Resolves: rhbz#1380687
+
 * Tue Sep 27 2016 Dan Walsh <dwalsh@redhat.com> - 3.13.1-102
 - Add virt_sandbox_use_nfs -> virt_use_nfs boolean substitution.
 Resolves: rhbz#1355783

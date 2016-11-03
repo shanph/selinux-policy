@@ -103539,7 +103539,7 @@ index a240455..04419ae 100644
 -	admin_pattern($1, sssd_log_t)
  ')
 diff --git a/sssd.te b/sssd.te
-index 2d8db1f..694c12d 100644
+index 2d8db1f..87e70a6 100644
 --- a/sssd.te
 +++ b/sssd.te
 @@ -28,19 +28,28 @@ logging_log_file(sssd_var_log_t)
@@ -103649,7 +103649,7 @@ index 2d8db1f..694c12d 100644
  
  init_read_utmp(sssd_t)
  
-@@ -112,18 +124,59 @@ logging_send_syslog_msg(sssd_t)
+@@ -112,18 +124,60 @@ logging_send_syslog_msg(sssd_t)
  logging_send_audit_msgs(sssd_t)
  
  miscfiles_read_generic_certs(sssd_t)
@@ -103708,6 +103708,7 @@ index 2d8db1f..694c12d 100644
 +seutil_manage_config(sssd_selinux_manager_t)
 +seutil_manage_login_config(sssd_selinux_manager_t)
 +seutil_manage_default_contexts(sssd_selinux_manager_t)
++seutil_manage_default_contexts_dirs(sssd_selinux_manager_t)
 +
 +seutil_exec_setfiles(sssd_selinux_manager_t)
 +logging_dontaudit_search_audit_logs(sssd_selinux_manager_t)
