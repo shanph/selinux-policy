@@ -63,6 +63,8 @@ if [ $REBUILD = 1 ]; then
     semodule -B -n -s $MIGRATE_SELINUXTYPE
     if [ "$MIGRATE_SELINUXTYPE" = "$SELINUXTYPE" ] && selinuxenabled; then
         load_policy
-        semanage export | semanage import
+        if [ -x /usr/sbin/semanage ]; then
+            /usr/sbin/semanage export | /usr/sbin/semanage import
+        fi
     fi
 fi

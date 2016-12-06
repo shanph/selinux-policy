@@ -27,3 +27,18 @@ index 48811e2..d2a1ba9 100644
  
  files_mounton_non_security(glusterd_t)
  
+diff --git a/rhcs.te b/rhcs.te
+index ce1ca24..4c9f2b6 100644
+--- a/rhcs.te
++++ b/rhcs.te
+@@ -275,6 +275,10 @@ optional_policy(`
+ ')
+ 
+ optional_policy(`
++    fprintd_dbus_chat(cluster_t)
++')
++
++optional_policy(`
+     ldap_systemctl(cluster_t)
+ ')
+ 

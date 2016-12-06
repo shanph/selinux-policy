@@ -20,7 +20,7 @@
 Summary: SELinux policy configuration
 Name: selinux-policy
 Version: 3.13.1
-Release: 102%{?dist}.4
+Release: 102%{?dist}.7
 License: GPLv2+
 Group: System Environment/Base
 Source: serefpolicy-%{version}.tgz
@@ -28,7 +28,7 @@ patch: policy-rhel-7.1-base.patch
 patch1: policy-rhel-7.1-contrib.patch
 patch2: policy-rhel-7.3-base.patch
 patch3: policy-rhel-7.3-contrib.patch
-patch4: glusterd-snapshot-creation-fdc66.patch
+patch4: policy-rhel-7.3.z-contrib.patch
 Source1: modules-targeted-base.conf 
 Source31: modules-targeted-contrib.conf
 Source2: booleans-targeted.conf
@@ -500,6 +500,7 @@ SELinux Reference policy targeted base module.
 %post targeted
 if [ -e /etc/selinux/targeted/modules/active/base.pp ]; then
     %{_libexecdir}/selinux/selinux-policy-migrate-local-changes.sh targeted
+    systemctl daemon-reexec
 fi
 %postInstall $1 targeted
 exit 0
@@ -547,6 +548,7 @@ fi
 %post minimum
 if [ -e /etc/selinux/minimum/modules/active/base.pp ]; then
     %{_libexecdir}/selinux/selinux-policy-migrate-local-changes.sh minimum
+    systemctl daemon-reexec
 fi
 contribpackages=`cat /usr/share/selinux/minimum/modules-contrib.lst`
 basepackages=`cat /usr/share/selinux/minimum/modules-base.lst`
@@ -620,6 +622,7 @@ SELinux Reference policy mls base module.
 %post mls 
 if [ -e /etc/selinux/mls/modules/active/base.pp ]; then
     %{_libexecdir}/selinux/selinux-policy-migrate-local-changes.sh mls
+    systemctl daemon-reexec
 fi
 %postInstall $1 mls
 
@@ -635,6 +638,18 @@ fi
 %endif
 
 %changelog
+* Mon Nov 14 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-102.7
+- Update systemd on RHEL-7.2 box to version from RHEL-7.3 and then as a separate yum command update the selinux policy systemd will start generating USER_AVC denials and will start returning "Access Denied" errors to DBus clients.
+Resolves: rhbz#1394715
+
+* Wed Nov 09 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-102.6
+- Allow cluster_t communicate to fprintd_t via dbus
+Resolves: rhbz#1349798
+
+* Wed Nov 09 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-102.5
+- Fix error message during update from RHEL-7.2 to RHEL-7.3, when /usr/sbin/semanage command is not installed and selinux-policy-migrate-local-changes.sh script is executed in %post install phase of selinux-policy package
+Resolves: rhbz#1393045
+
 * Wed Oct 19 2016 Miroslav Grepl <mgrepl@redhat.com> - 3.13.1-102.4
 - Allow GlusterFS with RDMA transport to be started correctly. It requires ipc_lock capability together with rw permission on rdma_cm device.
 Resolves:#1386620
