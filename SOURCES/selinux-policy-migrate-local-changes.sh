@@ -59,7 +59,7 @@ WARNING: Do not remove this file or remove /etc/selinux/$MIGRATE_SELINUXTYPE/mod
 completely if you are confident that you don't need old files anymore.
 EOF
 
-if [ $REBUILD = 1 ]; then
+if [ ${DONT_REBUILD:-0} = 0 -a $REBUILD = 1 ]; then
     semodule -B -n -s $MIGRATE_SELINUXTYPE
     if [ "$MIGRATE_SELINUXTYPE" = "$SELINUXTYPE" ] && selinuxenabled; then
         load_policy

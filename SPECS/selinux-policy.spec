@@ -20,7 +20,7 @@
 Summary: SELinux policy configuration
 Name: selinux-policy
 Version: 3.13.1
-Release: 102%{?dist}.7
+Release: 102%{?dist}.13
 License: GPLv2+
 Group: System Environment/Base
 Source: serefpolicy-%{version}.tgz
@@ -29,6 +29,7 @@ patch1: policy-rhel-7.1-contrib.patch
 patch2: policy-rhel-7.3-base.patch
 patch3: policy-rhel-7.3-contrib.patch
 patch4: policy-rhel-7.3.z-contrib.patch
+patch5: policy-rhel-7.3.z-base.patch
 Source1: modules-targeted-base.conf 
 Source31: modules-targeted-contrib.conf
 Source2: booleans-targeted.conf
@@ -337,6 +338,7 @@ Based off of reference policy: Checked out revision  2.20091117
 contrib_path=`pwd`
 %setup -n serefpolicy-%{version} -q
 %patch2 -p1
+%patch5 -p1
 refpolicy_path=`pwd`
 cp $contrib_path/* $refpolicy_path/policy/modules/contrib
 rm -rf $refpolicy_path/policy/modules/contrib/kubernetes.*
@@ -499,7 +501,8 @@ SELinux Reference policy targeted base module.
 
 %post targeted
 if [ -e /etc/selinux/targeted/modules/active/base.pp ]; then
-    %{_libexecdir}/selinux/selinux-policy-migrate-local-changes.sh targeted
+    DONT_REBUILD=1 %{_libexecdir}/selinux/selinux-policy-migrate-local-changes.sh targeted
+    touch /etc/selinux/targeted/.rebuild
     systemctl daemon-reexec
 fi
 %postInstall $1 targeted
@@ -547,7 +550,8 @@ fi
 
 %post minimum
 if [ -e /etc/selinux/minimum/modules/active/base.pp ]; then
-    %{_libexecdir}/selinux/selinux-policy-migrate-local-changes.sh minimum
+    DONT_REBUILD=1 %{_libexecdir}/selinux/selinux-policy-migrate-local-changes.sh minimum
+    touch /etc/selinux/minimum/.rebuild
     systemctl daemon-reexec
 fi
 contribpackages=`cat /usr/share/selinux/minimum/modules-contrib.lst`
@@ -621,7 +625,8 @@ SELinux Reference policy mls base module.
 
 %post mls 
 if [ -e /etc/selinux/mls/modules/active/base.pp ]; then
-    %{_libexecdir}/selinux/selinux-policy-migrate-local-changes.sh mls
+    DONT_REBUILD=1 %{_libexecdir}/selinux/selinux-policy-migrate-local-changes.sh mls
+    touch /etc/selinux/mls/.rebuild
     systemctl daemon-reexec
 fi
 %postInstall $1 mls
@@ -638,6 +643,40 @@ fi
 %endif
 
 %changelog
+* Mon Jan 09 2017 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-102.13
+- Allow systemd container to read/write usermodehelperstate
+Resolves: rhbz#1408126
+- Allow glusterd_t to bind on glusterd_port_t udp ports.
+Resolves: rhbz#1408128
+
+* Wed Jan 04 2017 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-102.12
+- Allow glusterd_t to bind on glusterd_port_t udp ports.
+Resolves: rhbz#1408128
+- Allow glusterd_t send signals to userdomain. Label new glusterd binaries as glusterd_exec_t
+Resolves: rhbz#1408128
+- Fixes for containers
+- Allow containers to attempt to write to unix_sysctls.
+- Allow cotainers to use the FD's leaked to them from parent processes.
+Resolves: rhbz#1408126
+- Allow systemd to stop glusterd_t domains.
+Resolves: rhbz#1408125
+
+* Mon Dec 19 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-102.11
+- Update ctdbd_t policy to reflect all changes.
+Resolves: rhbz#1403266
+
+* Thu Dec 15 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-102.10
+- Allow ctdbd_t domain transition to rpcd_t
+Resolves:rhbz#1403266
+
+* Tue Dec 13 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-102.9
+- Make working CTDB:NFS: CTDB failover from selinux-policy POV
+Resolves: rhbz#1403266
+
+* Mon Dec 05 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-102.8
+- Allow puppetagent_t to access timedated dbus. Use the systemd_dbus_chat_timedated interface to allow puppetagent_t the access.
+Resolves: rhbz#1400505
+
 * Mon Nov 14 2016 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-102.7
 - Update systemd on RHEL-7.2 box to version from RHEL-7.3 and then as a separate yum command update the selinux policy systemd will start generating USER_AVC denials and will start returning "Access Denied" errors to DBus clients.
 Resolves: rhbz#1394715
