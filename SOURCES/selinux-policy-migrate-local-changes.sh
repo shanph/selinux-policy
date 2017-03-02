@@ -34,12 +34,18 @@ fi
 INSTALL_MODULES=""
 for i in `find /etc/selinux/$MIGRATE_SELINUXTYPE/modules/active/modules/ -name \*disabled 2> /dev/null`; do
     module=`basename $i | sed 's/\.pp\.disabled$//'`
+    if [ $module == "pkcsslotd" ] || [ $module == "vbetool" ]; then
+        continue
+    fi
     if [ -d /etc/selinux/$MIGRATE_SELINUXTYPE/active/modules/100/$module ]; then
         touch /etc/selinux/$MIGRATE_SELINUXTYPE/active/modules/disabled/$module
     fi
 done
 for i in `find /etc/selinux/$MIGRATE_SELINUXTYPE/modules/active/modules/ -name \*.pp 2> /dev/null`; do
     module=`basename $i | sed 's/\.pp$//'`
+    if [ $module == "pkcsslotd" ] || [ $module == "vbetool" ]; then
+        continue
+    fi
     if [ ! -d /etc/selinux/$MIGRATE_SELINUXTYPE/active/modules/100/$module ]; then
         INSTALL_MODULES="${INSTALL_MODULES} $i"
     fi

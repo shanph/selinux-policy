@@ -20,7 +20,7 @@
 Summary: SELinux policy configuration
 Name: selinux-policy
 Version: 3.13.1
-Release: 102%{?dist}.13
+Release: 102%{?dist}.15
 License: GPLv2+
 Group: System Environment/Base
 Source: serefpolicy-%{version}.tgz
@@ -643,6 +643,14 @@ fi
 %endif
 
 %changelog
+* Tue Feb 07 2017 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-102.15
+- Allow sssd_t domain setpgid
+Resolves:rhbz#1419836
+
+* Wed Jan 11 2017 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-102.14
+- Upgrade fails %post: Re-declaration of type pkcsslotd_t
+Resolves: rhbz#1411660
+
 * Mon Jan 09 2017 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-102.13
 - Allow systemd container to read/write usermodehelperstate
 Resolves: rhbz#1408126
