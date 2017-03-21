@@ -99,6 +99,30 @@ index 48811e2..a8877f7 100644
  
  mount_domtrans(glusterd_t)
  
+diff --git a/openvswitch.te b/openvswitch.te
+index ed109d3..42cb208 100644
+--- a/openvswitch.te
++++ b/openvswitch.te
+@@ -100,6 +100,8 @@ auth_use_nsswitch(openvswitch_t)
+ 
+ logging_send_syslog_msg(openvswitch_t)
+ 
++init_read_script_state(openvswitch_t)
++
+ modutils_exec_insmod(openvswitch_t)
+ modutils_list_module_config(openvswitch_t)
+ modutils_read_module_config(openvswitch_t)
+@@ -108,6 +110,10 @@ modutils_read_module_deps(openvswitch_t)
+ sysnet_dns_name_resolve(openvswitch_t)
+ 
+ optional_policy(`
++    hostname_exec(openvswitch_t)
++')
++
++optional_policy(`
+ 	iptables_domtrans(openvswitch_t)
+ ')
+ 
 diff --git a/puppet.te b/puppet.te
 index b80cb1e..46a4b5d 100644
 --- a/puppet.te

@@ -20,7 +20,7 @@
 Summary: SELinux policy configuration
 Name: selinux-policy
 Version: 3.13.1
-Release: 102%{?dist}.15
+Release: 102%{?dist}.16
 License: GPLv2+
 Group: System Environment/Base
 Source: serefpolicy-%{version}.tgz
@@ -643,6 +643,11 @@ fi
 %endif
 
 %changelog
+* Thu Mar 09 2017 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-102.16
+- Allow openvswitch read script state.
+- Allow openvswitch exec hostname and readinitrc_t files
+Resolves: rhbz#1430751
+
 * Tue Feb 07 2017 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-102.15
 - Allow sssd_t domain setpgid
 Resolves:rhbz#1419836
