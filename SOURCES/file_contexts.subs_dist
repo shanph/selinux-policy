@@ -13,3 +13,4 @@
 /var/named/chroot/lib64 /usr/lib
 /var/home            /home
 /var/roothome        /root
+/sbin                /usr/sbin
