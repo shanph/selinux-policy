@@ -1,0 +1,55 @@
+diff --git a/lldpad.te b/lldpad.te
+index 42e5578f2..3399d597a 100644
+--- a/lldpad.te
++++ b/lldpad.te
+@@ -64,3 +64,7 @@ optional_policy(`
+ optional_policy(`
+     networkmanager_dgram_send(lldpad_t)
+ ')
++
++optional_policy(`
++    virt_dgram_send(lldpad_t)
++')
+diff --git a/tomcat.te b/tomcat.te
+index 97bdd60c9..386c4b7ac 100644
+--- a/tomcat.te
++++ b/tomcat.te
+@@ -51,6 +51,9 @@ optional_policy(`
+ # tomcat domain policy
+ #
+ 
++allow tomcat_t self:capability { dac_override setuid kill };
++
++allow tomcat_t self:process { setcap signal signull };
+ allow tomcat_domain self:fifo_file rw_fifo_file_perms;
+ allow tomcat_domain self:unix_stream_socket create_stream_socket_perms;
+ 
+diff --git a/virt.if b/virt.if
+index 1d17889f3..c6792a5a3 100644
+--- a/virt.if
++++ b/virt.if
+@@ -1618,4 +1618,23 @@ interface(`virt_dontaudit_read_state',`
+ 	dontaudit $1 virtd_t:dir search_dir_perms;
+ 	dontaudit $1 virtd_t:file read_file_perms;
+ 	dontaudit $1 virtd_t:lnk_file read_lnk_file_perms;
++')
++
++#######################################
++## <summary>
++##	Send to libvirt with a unix dgram socket.
++## </summary>
++## <param name="domain">
++##	<summary>
++##	Domain allowed access.
++##	</summary>
++## </param>
++#
++interface(`virt_dgram_send',`
++	gen_require(`
++		type virtd_t, virt_var_run_t;
++	')
++
++	files_search_pids($1)
++	dgram_send_pattern($1, virt_var_run_t, virt_var_run_t, virtd_t)
+ ')
+\ No newline at end of file

@@ -20,7 +20,7 @@
 Summary: SELinux policy configuration
 Name: selinux-policy
 Version: 3.13.1
-Release: 166%{?dist}
+Release: 166%{?dist}.4
 License: GPLv2+
 Group: System Environment/Base
 Source: serefpolicy-%{version}.tgz
@@ -28,6 +28,8 @@ patch: policy-rhel-7.1-base.patch
 patch1: policy-rhel-7.1-contrib.patch
 patch2: policy-rhel-7.4-base.patch
 patch3: policy-rhel-7.4-contrib.patch
+patch4: policy-rhel-7.4.z-base.patch
+patch5: policy-rhel-7.4.z-contrib.patch
 Source1: modules-targeted-base.conf 
 Source31: modules-targeted-contrib.conf
 Source2: booleans-targeted.conf
@@ -339,9 +341,11 @@ Based off of reference policy: Checked out revision  2.20091117
 %prep 
 %setup -n serefpolicy-contrib-%{version} -q -b 29
 %patch3 -p1
+%patch5 -p1
 contrib_path=`pwd`
 %setup -n serefpolicy-%{version} -q
 %patch2 -p1
+%patch4 -p1
 refpolicy_path=`pwd`
 cp $contrib_path/* $refpolicy_path/policy/modules/contrib
 rm -rf $refpolicy_path/policy/modules/contrib/kubernetes.*
@@ -651,6 +655,22 @@ fi
 %endif
 
 %changelog
+* Sat Aug 26 2017 Lukas Vrabec  <lvrabec@redhat.com> - 3.13.1-166.4
+- Allow tomcat_t domain couple capabilities to make working tomcat-jsvc
+Resolves: rhbz#1485308
+
+* Thu Aug 10 2017 Lukas Vrabec  <lvrabec@redhat.com> - 3.13.1-166.3
+- Fixing wrong NVR
+Resolves: rhbz#1479767
+
+* Thu Aug 10 2017 Lukas Vrabec  <lvrabec@redhat.com> - 3.13.1-166.2
+- Increase NVR
+Resolves: rhbz#1479767
+
+* Wed Aug 09 2017 Lukas Vrabec  <lvrabec@redhat.com> - 3.13.1-166.1
+- Allow llpdad send dgram to libvirt
+Resolves: rhbz#1479767
+
 * Mon Jul 10 2017 Lukas Vrabec  <lvrabec@redhat.com> - 3.13.1-166
 - Add new boolean gluster_use_execmem
 Resolves: rhbz#1469027
