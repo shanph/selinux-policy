@@ -1,3 +1,15 @@
+diff --git a/certmonger.te b/certmonger.te
+index 0803529e4..0585431e1 100644
+--- a/certmonger.te
++++ b/certmonger.te
+@@ -144,6 +144,7 @@ optional_policy(`
+ optional_policy(`
+ 	pki_rw_tomcat_cert(certmonger_t)
+ 	pki_read_tomcat_lib_files(certmonger_t)
++    pki_tomcat_systemctl(certmonger_t)
+ ')
+ 
+ optional_policy(`
 diff --git a/lldpad.te b/lldpad.te
 index 42e5578f2..3399d597a 100644
 --- a/lldpad.te
@@ -9,6 +21,38 @@ index 42e5578f2..3399d597a 100644
 +
 +optional_policy(`
 +    virt_dgram_send(lldpad_t)
++')
+diff --git a/pki.if b/pki.if
+index f18fcc68f..f69ae0298 100644
+--- a/pki.if
++++ b/pki.if
+@@ -477,3 +477,27 @@ interface(`pki_stream_connect',`
+ 	files_search_pids($1)
+ 	stream_connect_pattern($1, pki_common_t, pki_common_t, pki_tomcat_t)
+ ')
++
++########################################
++## <summary>
++##	Execute pki in the pkit_tomcat_t domain.
++## </summary>
++## <param name="domain">
++##	<summary>
++##	Domain allowed to transition.
++##	</summary>
++## </param>
++#
++interface(`pki_tomcat_systemctl',`
++	gen_require(`
++		type pki_tomcat_t;
++		type pki_tomcat_unit_file_t;
++	')
++
++	systemd_exec_systemctl($1)
++    systemd_read_fifo_file_passwd_run($1)
++	allow $1 pki_tomcat_unit_file_t:file read_file_perms;
++	allow $1 pki_tomcat_unit_file_t:service manage_service_perms;
++
++	ps_process_pattern($1, pki_tomcat_t)
 +')
 diff --git a/tomcat.te b/tomcat.te
 index 97bdd60c9..386c4b7ac 100644

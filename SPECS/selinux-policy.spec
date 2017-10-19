@@ -20,7 +20,7 @@
 Summary: SELinux policy configuration
 Name: selinux-policy
 Version: 3.13.1
-Release: 166%{?dist}.4
+Release: 166%{?dist}.5
 License: GPLv2+
 Group: System Environment/Base
 Source: serefpolicy-%{version}.tgz
@@ -655,6 +655,10 @@ fi
 %endif
 
 %changelog
+* Wed Aug 30 2017 Lukas Vrabec  <lvrabec@redhat.com> - 3.13.1-166.5
+- Allow certmonger using systemctl on pki_tomcat unit files
+Resolves: rhbz#1486552
+
 * Sat Aug 26 2017 Lukas Vrabec  <lvrabec@redhat.com> - 3.13.1-166.4
 - Allow tomcat_t domain couple capabilities to make working tomcat-jsvc
 Resolves: rhbz#1485308
