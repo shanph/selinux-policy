@@ -10,6 +10,19 @@ index 0803529e4..0585431e1 100644
  ')
  
  optional_policy(`
+diff --git a/keepalived.te b/keepalived.te
+index c4f0c3237..4b5c0e4ec 100644
+--- a/keepalived.te
++++ b/keepalived.te
+@@ -24,7 +24,7 @@ application_executable_file(keepalived_unconfined_script_exec_t)
+ #
+ 
+ allow keepalived_t self:capability { net_admin net_raw kill };
+-allow keepalived_t self:process { signal_perms };
++allow keepalived_t self:process { signal_perms setpgid };
+ allow keepalived_t self:netlink_socket create_socket_perms;
+ allow keepalived_t self:netlink_generic_socket create_socket_perms;
+ allow keepalived_t self:netlink_netfilter_socket create_socket_perms;
 diff --git a/lldpad.te b/lldpad.te
 index 42e5578f2..3399d597a 100644
 --- a/lldpad.te
@@ -54,8 +67,50 @@ index f18fcc68f..f69ae0298 100644
 +
 +	ps_process_pattern($1, pki_tomcat_t)
 +')
+diff --git a/rhcs.if b/rhcs.if
+index 59e5d7e3b..145d67f2a 100644
+--- a/rhcs.if
++++ b/rhcs.if
+@@ -957,3 +957,22 @@ interface(`rhcs_start_haproxy_services',`
+ 	systemd_exec_systemctl($1)
+ 	allow $1 haproxy_unit_file_t:service {status start};
+ ')
++
++########################################
++## <summary>
++##	Create log files with a named file
++##	type transition.
++## </summary>
++## <param name="domain">
++##	<summary>
++##	Domain allowed access.
++##	</summary>
++## </param>
++#
++interface(`rhcs_named_filetrans_log_dir',`
++	gen_require(`
++		type var_log_t;
++	')
++
++	logging_log_named_filetrans($1, var_log_t, dir, "bundles")
++')
+diff --git a/rhcs.te b/rhcs.te
+index a95c73dc7..a5aec03a8 100644
+--- a/rhcs.te
++++ b/rhcs.te
+@@ -320,6 +320,10 @@ optional_policy(`
+ ')
+ 
+ optional_policy(`
++    rhcs_named_filetrans_log_dir(cluster_t)
++')
++
++optional_policy(`
+     rpc_systemctl_nfsd(cluster_t)
+     rpc_systemctl_rpcd(cluster_t)
+ 
 diff --git a/tomcat.te b/tomcat.te
-index 97bdd60c9..386c4b7ac 100644
+index 97bdd60c9..e35ae6b3d 100644
 --- a/tomcat.te
 +++ b/tomcat.te
 @@ -51,6 +51,9 @@ optional_policy(`
@@ -68,6 +123,14 @@ index 97bdd60c9..386c4b7ac 100644
  allow tomcat_domain self:fifo_file rw_fifo_file_perms;
  allow tomcat_domain self:unix_stream_socket create_stream_socket_perms;
  
+@@ -82,6 +85,7 @@ corenet_tcp_connect_amqp_port(tomcat_domain)
+ corenet_tcp_connect_oracle_port(tomcat_domain)
+ corenet_tcp_connect_ibm_dt_2_port(tomcat_domain)
+ corenet_tcp_connect_unreserved_ports(tomcat_domain)
++corenet_tcp_connect_mssql_port(tomcat_domain)
+ 
+ dev_read_rand(tomcat_domain)
+ dev_read_urand(tomcat_domain)
 diff --git a/virt.if b/virt.if
 index 1d17889f3..c6792a5a3 100644
 --- a/virt.if

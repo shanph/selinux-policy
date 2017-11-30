@@ -20,7 +20,7 @@
 Summary: SELinux policy configuration
 Name: selinux-policy
 Version: 3.13.1
-Release: 166%{?dist}.5
+Release: 166%{?dist}.7
 License: GPLv2+
 Group: System Environment/Base
 Source: serefpolicy-%{version}.tgz
@@ -655,6 +655,16 @@ fi
 %endif
 
 %changelog
+* Thu Nov 16 2017 Lukas Vrabec  <lvrabec@redhat.com> - 3.13.1-166.7
+- Allow cluster_t domain creating bundles directory with label var_log_t instead of cluster_var_log_t
+Resolves: rhbz:#1513075
+
+* Wed Oct 11 2017 Lukas Vrabec  <lvrabec@redhat.com> - 3.13.1-166.6
+- Allow tomcat domain to connect to mssql port
+Resolves: rhbz#1500697
+- Add keepalived domain setpgid capability
+Resolves: rhbz#1500813
+
 * Wed Aug 30 2017 Lukas Vrabec  <lvrabec@redhat.com> - 3.13.1-166.5
 - Allow certmonger using systemctl on pki_tomcat unit files
 Resolves: rhbz#1486552
