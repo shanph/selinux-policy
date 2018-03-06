@@ -20,7 +20,7 @@
 Summary: SELinux policy configuration
 Name: selinux-policy
 Version: 3.13.1
-Release: 166%{?dist}.7
+Release: 166%{?dist}.9
 License: GPLv2+
 Group: System Environment/Base
 Source: serefpolicy-%{version}.tgz
@@ -655,6 +655,14 @@ fi
 %endif
 
 %changelog
+* Wed Feb 21 2018 Lukas Vrabec  <lvrabec@redhat.com> - 3.13.1-166.9
+- Update openvswitch policy from Fedora
+Resolves: rhbz#1538936
+
+* Fri Jan 26 2018 Lukas Vrabec  <lvrabec@redhat.com> - 3.13.1-166.8
+- Update openvswitch SELinux module
+Resolves: rhbz#1538936
+
 * Thu Nov 16 2017 Lukas Vrabec  <lvrabec@redhat.com> - 3.13.1-166.7
 - Allow cluster_t domain creating bundles directory with label var_log_t instead of cluster_var_log_t
 Resolves: rhbz:#1513075
