@@ -20,12 +20,14 @@
 Summary: SELinux policy configuration
 Name: selinux-policy
 Version: 3.13.1
-Release: 192%{?dist}
+Release: 192%{?dist}.3
 License: GPLv2+
 Group: System Environment/Base
 Source: serefpolicy-%{version}.tgz
 patch0: policy-rhel-7.5-base.patch
 patch1: policy-rhel-7.5-contrib.patch
+patch2: policy-rhel-7.5.z-base.patch
+patch3: policy-rhel-7.5.z-contrib.patch
 Source1: modules-targeted-base.conf
 Source31: modules-targeted-contrib.conf
 Source2: booleans-targeted.conf
@@ -340,9 +342,11 @@ Based off of reference policy: Checked out revision  2.20091117
 %prep 
 %setup -n serefpolicy-contrib-%{version} -q -b 29
 %patch1 -p1
+%patch3 -p1
 contrib_path=`pwd`
 %setup -n serefpolicy-%{version} -q
 %patch0 -p1
+%patch2 -p1
 refpolicy_path=`pwd`
 cp $contrib_path/* $refpolicy_path/policy/modules/contrib
 rm -rf $refpolicy_path/policy/modules/contrib/kubernetes.*
@@ -652,6 +656,18 @@ fi
 %endif
 
 %changelog
+* Wed Mar 28 2018 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-192.3
+- Allow snapperd_t domain to unmount fs_t filesystems
+Resolves: rhbz#1561424
+
+* Mon Mar 26 2018 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-192.2
+- Allow snapperd_t to set priority for kernel processes
+Resolves: rhbz#1558656
+
+* Wed Mar 21 2018 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-192.1
+- Backport several changes for snapperdfrom Fedora Rawhide
+Resolves: rhbz#1558656
+
 * Tue Feb 27 2018 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-192
 - Label /usr/libexec/dbus-1/dbus-daemon-launch-helper  as dbusd_exec_t to have systemd dbus services running in the correct domain instead of unconfined_service_t if unconfined.pp module is enabled.
 Resolves: rhbz#1546721
