@@ -1,0 +1,35 @@
+diff --git a/snapper.te b/snapper.te
+index faf4fc9fca..fda6e0b289 100644
+--- a/snapper.te
++++ b/snapper.te
+@@ -22,6 +22,8 @@ files_type(snapperd_data_t)
+ #
+ # snapperd local policy
+ #
++allow snapperd_t self:capability { dac_read_search fowner sys_admin };
++allow snapperd_t self:process setsched;
+ 
+ allow snapperd_t self:fifo_file rw_fifo_file_perms;
+ allow snapperd_t self:unix_stream_socket create_stream_socket_perms;
+@@ -36,8 +38,12 @@ manage_lnk_files_pattern(snapperd_t, snapperd_conf_t, snapperd_conf_t)
+ manage_files_pattern(snapperd_t, snapperd_data_t, snapperd_data_t)
+ manage_dirs_pattern(snapperd_t, snapperd_data_t, snapperd_data_t)
+ manage_lnk_files_pattern(snapperd_t, snapperd_data_t, snapperd_data_t)
++allow snapperd_t snapperd_data_t:file relabelfrom;
++allow snapperd_t snapperd_data_t:dir { relabelfrom relabelto mounton };
+ snapper_filetrans_named_content(snapperd_t)
+ 
++kernel_setsched(snapperd_t)
++
+ domain_read_all_domains_state(snapperd_t)
+ 
+ corecmd_exec_shell(snapperd_t)
+@@ -51,6 +57,8 @@ files_read_all_files(snapperd_t)
+ files_list_all(snapperd_t)
+ 
+ fs_getattr_all_fs(snapperd_t)
++fs_mount_xattr_fs(snapperd_t)
++fs_unmount_xattr_fs(snapperd_t)
+ 
+ storage_raw_read_fixed_disk(snapperd_t)
+ 
