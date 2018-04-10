@@ -13,21 +13,19 @@
 %if %{?BUILD_MLS:0}%{!?BUILD_MLS:1}
 %define BUILD_MLS 1
 %endif
-%define POLICYVER 30
-%define POLICYCOREUTILSVER 2.5
+%define POLICYVER 31
+%define POLICYCOREUTILSVER 2.5-18
 %define CHECKPOLICYVER 2.5
 %define LIBSEMANAGEVER 2.5
 Summary: SELinux policy configuration
 Name: selinux-policy
 Version: 3.13.1
-Release: 172%{?dist}
+Release: 192%{?dist}
 License: GPLv2+
 Group: System Environment/Base
 Source: serefpolicy-%{version}.tgz
-patch: policy-rhel-7.1-base.patch
-patch1: policy-rhel-7.1-contrib.patch
-patch2: policy-rhel-alt-7.4-base.patch
-patch3: policy-rhel-alt-7.4-contrib.patch
+patch0: policy-rhel-7.5-base.patch
+patch1: policy-rhel-7.5-contrib.patch
 Source1: modules-targeted-base.conf
 Source31: modules-targeted-contrib.conf
 Source2: booleans-targeted.conf
@@ -85,6 +83,7 @@ Requires: libsemanage >= %{LIBSEMANAGEVER}
 Summary: SELinux policy sandbox
 Group: System Environment/Base
 Requires(pre): selinux-policy-base = %{version}-%{release}
+Requires(pre): selinux-policy-targeted = %{version}-%{release}
 
 %description sandbox
 SELinux sandbox policy used for the policycoreutils-sandbox package
@@ -133,6 +132,7 @@ SELinux policy development and man page package
 %{_usr}/share/selinux/devel/Makefile
 %{_usr}/share/selinux/devel/example.*
 %{_usr}/share/selinux/devel/policy.*
+%ghost %{_sharedstatedir}/sepolgen/interface_info
 
 %post devel
 selinuxenabled && /usr/bin/sepolgen-ifgen 2>/dev/null 
@@ -256,6 +256,7 @@ rm -f %{buildroot}%{_sysconfdir}/selinux/%1/active/*.linked \
 %ghost %{_sysconfdir}/selinux/%1/active/policy.linked \
 %ghost %{_sysconfdir}/selinux/%1/active/seusers.linked \
 %ghost %{_sysconfdir}/selinux/%1/active/users_extra.linked \
+%verify(not md5 size mtime) %{_sysconfdir}/selinux/%1/active/file_contexts.homedirs \
 %nil
 
 
@@ -338,10 +339,10 @@ Based off of reference policy: Checked out revision  2.20091117
 
 %prep 
 %setup -n serefpolicy-contrib-%{version} -q -b 29
-%patch3 -p1
+%patch1 -p1
 contrib_path=`pwd`
 %setup -n serefpolicy-%{version} -q
-%patch2 -p1
+%patch0 -p1
 refpolicy_path=`pwd`
 cp $contrib_path/* $refpolicy_path/policy/modules/contrib
 rm -rf $refpolicy_path/policy/modules/contrib/kubernetes.*
@@ -651,9 +652,397 @@ fi
 %endif
 
 %changelog
-* Wed Sep 20 2017 Lukas Vrabec  <lvrabec@redhat.com> - 3.13.1-172
+* Tue Feb 27 2018 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-192
+- Label /usr/libexec/dbus-1/dbus-daemon-launch-helper  as dbusd_exec_t to have systemd dbus services running in the correct domain instead of unconfined_service_t if unconfined.pp module is enabled.
+Resolves: rhbz#1546721
+
+* Mon Feb 19 2018 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-191
+- Allow openvswitch_t stream connect svirt_t
+Resolves: rhbz#1540702
+
+* Fri Feb 16 2018 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-190
+- Allow openvswitch domain to manage svirt_tmp_t sock files
+Resolves: rhbz#1540702
+- Fix broken systemd_tmpfiles_run() interface
+
+* Wed Feb 07 2018 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-189
+- Allow dirsrv_t domain to create tmp link files
+Resolves: rhbz#1536011
+- Label /usr/sbin/ldap-agent as dirsrv_snmp_exec_t
+Resolves: rhbz#1428568
+- Allow ipsec_mgmt_t execute ifconfig_exec_t binaries
+- Allow ipsec_mgmt_t nnp domain transition to ifconfig_t
+Resolves: rhbz#1539416
+
+* Wed Feb 07 2018 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-188
+- Allow svirt_domain to create socket files in /tmp with label svirt_tmp_t
+Resolves: rhbz#1540702
+- Allow keepalived_t domain getattr proc filesystem
+Resolves: rhbz#1477542
+- Rename svirt_sandbox_file_t to container_file_t and svirt_lxc_net_t to container_t
+Resolves: rhbz#1538544
+- Allow ipsec_t nnp transistions to domains ipsec_mgmt_t and ifconfig_t
+Resolves: rhbz:#1539416
+- Allow systemd_logind_t domain to bind on dhcpd_port_t,pki_ca_port_t,flash_port_t
+Resolves: rhbz#1479350
+
+* Tue Feb 06 2018 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-187
+- Allow openvswitch_t domain to read cpuid, write to sysfs files and creating openvswitch_tmp_t sockets
+Resolves: rhbz#1535196
+- Add new interface ppp_filetrans_named_content()
+Resolves: rhbz#1530601
+- Allow keepalived_t read sysctl_net_t files
+Resolves: rhbz#1477542
+- Allow puppetmaster_t domtran to puppetagent_t
+Resolves: rhbz#1376893
+- Allow kdump_t domain to read kernel ring buffer
+Resolves: rhbz#1540004
+- Allow ipsec_t domain to exec ifconfig_exec_t binaries.
+Resolves: rhbz#1539416
+- Allow unconfined_domain_typ to create pppd_lock_t directory in /var/lock
+Resolves: rhbz#1530601
+- Allow updpwd_t domain to create files in /etc with shadow_t label
+Resolves: rhbz#1412838
+- Allow iptables sysctl load list support with SELinux enforced
+Resolves: rhbz#1535572
+
+* Wed Jan 17 2018 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-186
+- Allow virt_domains to acces infiniband pkeys.
+Resolves: rhbz#1533183
+- Label /usr/libexec/ipsec/addconn as ipsec_exec_t to run this script as ipsec_t instead of init_t
+Resolves: rhbz#1535133
+- Allow audisp_remote_t domain write to files on all levels
+Resolves: rhbz#1534924
+
+* Thu Jan 11 2018 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-185
+- Allow vmtools_t domain creating vmware_log_t files
+Resolves: rhbz#1507048
+- Allow openvswitch_t domain to acces infiniband devices
+Resolves: rhbz#1532705
+
+* Wed Jan 10 2018 Lukas Vrabec <lvrabec@redhat.com> - 3.13.1-184
+- Allow chronyc_t domain to manage chronyd_keys_t files.
+Resolves: rhbz#1530525
+- Make virtlog_t domain system dbus client
+Resolves: rhbz#1481109
+- Update openvswitch SELinux module
+Resolves: rhbz#1482682
+- Allow virtd_t to create also sock_files with label virt_var_run_t
+Resolves: rhbz#1484075
+
+* Mon Dec 11 2017 Lukas Vrabec  <lvrabec@redhat.com> - 3.13.1-183
+- Allow domains that manage logfiles to man logdirs
+Resolves: rhbz#1523811
+
+* Thu Dec 07 2017 Lukas Vrabec  <lvrabec@redhat.com> - 3.13.1-182
+- Label /dev/drm_dp_aux* as xserver_misc_device_t
+Resolves: rhbz#1520897
+- Allow sysadm_t to run puppet_exec_t binaries as puppet_t
+Resolves: rhbz#1255745
+
+* Mon Dec 04 2017 Lukas Vrabec  <lvrabec@redhat.com> - 3.13.1-181
+- Allow tomcat_t to manage pki_tomcat pid files
+Resolves: rhbz#1478371
+- networkmanager: allow talking to openvswitch
+Resolves: rhbz#1517247
+- Allow networkmanager_t and opensm_t to manage subned endports for IPoIB VLANs
+Resolves: rhbz#1517895
+- Allow domains networkmanager_t and opensm_t to control IPoIB VLANs
+Resolves: rhbz#1517744
+- Fix typo in guest interface file
+Resolves: rhbz#1468254
+- Allow isnsd_t domain to accept tcp connections.
+Resolves: rhbz#1390208
+
+* Mon Nov 20 2017 Lukas Vrabec  <lvrabec@redhat.com> - 3.13.1-180
+- Allow getty to use usbttys
+Resolves: rhbz#1514235
+
+* Mon Nov 13 2017 Lukas Vrabec  <lvrabec@redhat.com> - 3.13.1-179
+- Allow ldap_t domain to manage also slapd_tmp_t lnk files
+Resolves: rhbz#1510883
+- Allow cluster_t domain creating bundles directory with label var_log_t instead of cluster_var_log_t
+Resolves: rhbz:#1508360
+- Add dac_read_search and dac_override capabilities to ganesha
+Resolves: rhbz#1483451
+
+* Wed Nov 08 2017 Lukas Vrabec  <lvrabec@redhat.com> - 3.13.1-178
+- Add dependency for policycoreutils-2.5.18 becuase of new cgroup_seclabel policy capability
+Resolves: rhbz#1510145
+
+* Mon Nov 06 2017 Lukas Vrabec  <lvrabec@redhat.com> - 3.13.1-177
+- Allow jabber domains to connect to postgresql ports
+Resolves: rhbz#1438489
+- Dontaudit accountsd domain creating dirs in /root
+Resolves: rhbz#1456760 
+- Dontaudit slapd_t to block suspend system
+Resolves: rhbz: #1479759 
+- Allow spamc_t to stream connect to cyrus.
+Resolves: rhbz#1382955 
+- allow imapd to read /proc/net/unix file
+Resolves: rhbz#1393030 
+- Allow passenger to connect to mysqld_port_t
+Resolves: rhbz#1433464 
+
+* Mon Nov 06 2017 Lukas Vrabec  <lvrabec@redhat.com> - 3.13.1-176
+- Allow chronyc_t domain to use user_ptys
+Resolves: rhbz#1470150
+- allow ptp4l to read /proc/net/unix file
+- Allow conmand to use usb ttys.
+Resolves: rhbz#1505121
+- Label all files /var/log/opensm.* as opensm_log_t because opensm creating new log files with name opensm-subnet.lst
+Resolves: rhbz#1505845
+- Allow chronyd daemon to execute chronyc.
+Resolves: rhbz#1508486
+- Allow firewalld exec ldconfig.
+Resolves: rhbz#1375576
+- Allow mozilla_plugin_t domain to dbus chat with devicekit
+Resolves: rhbz#1460477
+- Dontaudit leaked logwatch pipes
+Resolves: rhbz#1450119
+- Label /usr/bin/VGAuthService as vmtools_exec_t to confine this daemon.
+Resolves: rhbz#1507048
+- Allow httpd_t domain to execute hugetlbfs_t files
+Resolves: rhbz#1507682
+- Allow nfsd_t domain to read configfs_t files/dirs
+Resolves: rhbz#1439442
+- Hide all allow rules with ptrace inside deny_ptrace boolean
+Resolves: rhbz#1421075
+- Allow tgtd_t domain to read generic certs
+Resolves: rhbz#1438532
+- Allow ptp4l to send msgs via dgram socket to unprivileged user domains
+Resolves: rhbz#1429853
+- Allow dirsrv_snmp_t to use inherited user ptys and read system state
+Resolves: rhbz#1428568
+- Allow glusterd_t domain to create own tmpfs dirs/files
+Resolves: rhbz#1411310
+- Allow keepalived stream connect to snmp
+Resolves: rhbz#1401556
+- After fix in kernel where LSM hooks for dac_override and dac_search_read capability was swaped we need to fix it also in policy
+Resolves: rhbz#1507089
+
+* Fri Oct 27 2017 Lukas Vrabec  <lvrabec@redhat.com> - 3.13.1-175
+- Allow pegasus_openlmi_services_t to read generic certs
+Resolves: rhbz#1462292
+- Allow ganesha_t domain to read random device
+Resolves: rhbz#1494382
+- Allow zabbix_t domain to change its resource limits
+Resolves: rhbz:#1504074
+- Add new boolean nagios_use_nfs
+Resolves: rhbz#1504826
+- Allow system_mail_t to search network sysctls
+Resolves: rhbz#1505779
+- Add samba_manage_var_dirs() interface
+- Fix typo bug in virt filecontext file
+- Allow nagios_script_t to read nagios_spool_t files
+Resolves: rhbz#1426824
+- Allow samba to manage var dirs/files
+Resolves: rhbz#1415088
+- Allow sbd_t to create own sbd_tmpfs_t dirs/files
+Resolves: rhbz#1380795
+- Allow firewalld and networkmanager to chat with hypervkvp via dbus
+Resolves: rhbz#1377276
+- Allow dmidecode to read rhsmcert_log_t files
+Resolves: rhbz#1300799
+- Allow mail system to connect mariadb sockets.
+Resolves: rhbz#1368642
+- Allow logrotate_t to change passwd and reloead services
+Resolves: rhbz#1450789
+- Allow mail system to connect mariadb sockets.
+Resolves: rhbz#1368642
+- Allow logrotate_t to change passwd and reloead services
+Resolves: rhbz#1450789
+- Allow pegasus_openlmi_services_t to read generic certs
+Resolves: rhbz#1462292
+- Allow ganesha_t domain to read random device
+Resolves: rhbz#1494382
+- Allow zabbix_t domain to change its resource limits
+Resolves: rhbz:#1504074
+- Add new boolean nagios_use_nfs
+Resolves: rhbz#1504826
+- Allow system_mail_t to search network sysctls
+Resolves: rhbz#1505779
+- Add samba_manage_var_dirs() interface
+- Fix typo bug in virt filecontext file
+- Allow nagios_script_t to read nagios_spool_t files
+Resolves: rhbz#1426824
+- Allow samba to manage var dirs/files
+Resolves: rhbz#1415088
+- Allow sbd_t to create own sbd_tmpfs_t dirs/files
+Resolves: rhbz#1380795
+- Allow firewalld and networkmanager to chat with hypervkvp via dbus
+Resolves: rhbz#1377276
+- Allow dmidecode to read rhsmcert_log_t files
+Resolves: rhbz#1300799
+- Allow mail system to connect mariadb sockets.
+Resolves: rhbz#1368642
+- Allow logrotate_t to change passwd and reloead services
+Resolves: rhbz#1450789
+- Allow chronyd_t do request kernel module and block_suspend capability
+Resolves: rhbz#1350765
+- Allow system_cronjob_t to create /var/lib/letsencrypt dir with right label
+Resolves: rhbz#1447278
+- Allow httpd_t also read httpd_user_content_type dirs when httpd_enable_homedirs is enables
+Resolves: rhbz#1491994
+- Allow svnserve to use kerberos
+Resolves: rhbz#1475271
+- Allow conman to use ptmx. Add conman_use_nfs boolean
+Resolves: rhbz#1377915
+- Add nnp transition for services using: NoNewPrivileges systemd security feature
+Resolves: rhbz#1311430
+- Add SELinux support for chronyc
+Resolves: rhbz#1470150
+- Add dac_read_search capability to openvswitch_t domain
+Resolves: rhbz#1501336
+- Allow svnserve to manage own svnserve_log_t files/dirs
+Resolves: rhbz#1480741
+- Allow keepalived_t to search network sysctls
+Resolves: rhbz#1477542
+- Allow puppetagent_t domain dbus chat with rhsmcertd_t domain
+Resolves: rhbz#1446777
+- Add dccp_socket into socker_class_set subset
+Resolves: rhbz#1459941
+- Allow iptables_t to run setfiles to restore context on system
+Resolves: rhbz#1489118
+- Label 20514 tcp/udp ports as syslogd_port_t Label 10514 tcp/udp portas as syslog_tls_port_t
+Resolves: rhbz:#1411400
+- Make nnp transition Active
+Resolves: rhbz#1480518
+- Label tcp 51954 as isns_port_t
+Resolves: rhbz#1390208
+- Add dac_read_search capability chkpwd_t
+Resolves: rhbz#1376991
+- Add support for running certbot(letsencrypt) in crontab
+Resolves: rhbz#1447278
+- Add init_nnp_daemon_domain interface
+- Allow xdm_t to gettattr /dev/loop-control device
+Resolves: rhbz#1462925
+- Allow nnp trasintion for unconfined_service_t
+Resolves: rhbz#1311430
+- Allow unpriv user domains and unconfined_service_t to use chronyc
+Resolves: rhbz#1470150
+- Allow iptables to exec plymouth.
+Resolves: rhbz#1480374
+- Fix typo in fs_unmount_tracefs interface.
+Resolves: rhbz#1371057
+- Label postgresql-check-db-dir as postgresql_exec_t
+Resolves: rhbz#1490956
+
+* Tue Sep 26 2017 Lukas Vrabec  <lvrabec@redhat.com> - 3.13.1-174
+- We should not ship selinux-policy with permissivedomains enabled.
+Resolves: rhbz#1494172
+- Fix order of installing selinux-policy-sandbox, because of depedencied in sandbox module, selinux-policy-targeted needs to be installed before selinux-policy-sandbox
+Resolves: rhbz#1492606
+
+* Tue Sep 19 2017 Lukas Vrabec  <lvrabec@redhat.com> - 3.13.1-173
+- Allow tomcat to setsched 
+Resolves: rhbz#1492730
+- Fix rules blocking ipa-server upgrade process
+Resolves: rhbz#1478371
+- Add new boolean tomcat_read_rpm_db()
+Resolves: rhbz#1477887
+- Allow tomcat to connect on mysqld tcp ports
+- Add ctdbd_t domain sys_source capability and allow setrlimit
+Resolves: rhbz#1491235
+- Fix keepalived SELinux module
+- Allow automount domain to manage mount pid files
+Resolves: rhbz#1482381
+- Allow stunnel_t domain setsched
+Resolves: rhbz#1479383
+- Add keepalived domain setpgid capability
+Resolves: rhbz#1486638
+- Allow tomcat domain to connect to mssql port
+Resolves: rhbz#1484572
+- Remove snapperd_t from unconfined domaines
+Resolves: rhbz#1365555
+- Fix typo bug in apache module
+Resolves: rhbz#1397311
+- Dontaudit that system_mail_t is trying to read /root/ files
+Resolves: rhbz#1147945
+- Make working webadm_t userdomain
+Resolves: rhbz#1323792
+- Allow redis domain to execute shell scripts.
+Resolves: rhbz#1421326
+- Allow system_cronjob_t to create redhat-access-insights.log with var_log_t
+Resolves: rhbz#1473303
+- Add couple capabilities to keepalived domain and allow get attributes of all domains
+Resolves: rhbz#1429327
+- Allow dmidecode read rhsmcertd lock files
+Resolves: rhbz#1300799
+- Add new interface rhsmcertd_rw_lock_files()
+Resolves: rhbz#1300799
+- Label all plymouthd archives as plymouthd_var_log_t
+Resolves: rhbz#1478323
+- Allow cloud_init_t to dbus chat with systemd_timedated_t
+Resolves: rhbz#1440730
+- Allow logrotate_t to write to kmsg
+Resolves: rhbz#1397744
+- Add capability kill to rhsmcertd_t
+Resolves: rhbz#1398338
+- Disable mysqld_safe_t secure mode environment cleansing.
+Resolves: rhbz#1464063
+- Allow winbind to manage smbd_tmp_t files
+Resolves: rhbz#1475566
+- Dontaudit that system_mail_t is trying to read /root/ files
+Resolves: rhbz#1147945
+- Make working webadm_t userdomain
+Resolves: rhbz#1323792
+- Allow redis domain to execute shell scripts.
+Resolves: rhbz#1421326
+- Allow system_cronjob_t to create redhat-access-insights.log with var_log_t
+Resolves: rhbz#1473303
+- Add couple capabilities to keepalived domain and allow get attributes of all domains
+Resolves: rhbz#1429327
+- Allow dmidecode read rhsmcertd lock files
+Resolves: rhbz#1300799
+- Add new interface rhsmcertd_rw_lock_files()
+Resolves: rhbz#1300799
+- Label all plymouthd archives as plymouthd_var_log_t
+Resolves: rhbz#1478323 
+- Allow cloud_init_t to dbus chat with systemd_timedated_t
+Resolves: rhbz#1440730
+- Allow logrotate_t to write to kmsg
+Resolves: rhbz#1397744
+- Add capability kill to rhsmcertd_t
+Resolves: rhbz#1398338
+- Disable mysqld_safe_t secure mode environment cleansing.
+Resolves: rhbz#1464063
+- Allow winbind to manage smbd_tmp_t files
+Resolves: rhbz#1475566
+- Add interface systemd_tmpfiles_run
+- End of file cannot be in comment
+- Allow systemd-logind to use ypbind
+Resolves: rhbz#1479350
+- Add creating opasswd file with shadow_t SELinux label in auth_manage_shadow() interface
+Resolves: rhbz#1412838
 - Allow sysctl_irq_t assciate with proc_t
-Resolves: rhbz#1483550
+Resolves: rhbz#1485909
+- Enable cgourp sec labeling
+Resolves: rhbz#1485947
+- Add cgroup_seclabel policycap.
+Resolves: rhbz#1485947
+- Allow sshd_t domain to send signull to xdm_t processes
+Resolves: rhbz#1448959
+- Allow updpwd_t domain auth file name trans
+Resolves: rhbz#1412838
+- Allow sysadm user to run systemd-tmpfiles
+Resolves: rbhz#1325364
+- Add support labeling for vmci and vsock device
+Resolves: rhbz#1451358
+- Add userdom_dontaudit_manage_admin_files() interface
+Resolves: rhbz#1323792
+- Allow iptables_t domain to read files with modules_conf_t label
+Resolves: rhbz#1373220
+- init: Add NoNewPerms support for systemd.
+Resolves: rhbz#1480518
+- Add nnp_nosuid_transition policycap and related class/perm definitions.
+Resolves: rhbz#1480518
+- refpolicy: Infiniband pkeys and endports
+Resolves: rhbz#1464484
+
+* Tue Aug 29 2017 Lukas Vrabec  <lvrabec@redhat.com> - 3.13.1-172
+- Allow certmonger using systemctl on pki_tomcat unit files
+Resolves: rhbz#1481388
 
 * Tue Aug 29 2017 Lukas Vrabec  <lvrabec@redhat.com> - 3.13.1-171
 - Allow targetd_t to create own tmp files.
